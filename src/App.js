@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -16,71 +16,140 @@ function getDistance(lat1, lon1, lat2, lon2) {
 function timeAgo(dateStr) {
   const mins = Math.floor((Date.now() - new Date(dateStr)) / 60000);
   if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins} min ago`;
+  if (mins < 60) return `${mins}m ago`;
   const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return `${h}h${m > 0 ? m + 'm' : ''} ago`;
+  return `${h}h${mins % 60 > 0 ? (mins % 60) + 'm' : ''} ago`;
 }
 
 function freshnessInfo(dateStr) {
   const mins = Math.floor((Date.now() - new Date(dateStr)) / 60000);
-  if (mins < 15) return { bg: '#fff3e0', color: '#e65100', label: '🔥 Just out!' };
-  if (mins < 30) return { bg: '#fff8e1', color: '#f57c00', label: '🔥 Very fresh' };
-  if (mins < 60) return { bg: '#e8f5e9', color: '#2e7d32', label: '✅ Fresh' };
-  if (mins < 90) return { bg: '#f1f8e9', color: '#558b2f', label: '👍 Still warm' };
-  return { bg: '#f5f5f5', color: '#9e9e9e', label: '⏳ Getting old' };
+  if (mins < 15)  return { label: 'Just out!',   color: '#FF5000', bg: '#FFF0EB', bar: 100 };
+  if (mins < 30)  return { label: 'Very fresh',  color: '#FF7A00', bg: '#FFF5EC', bar: 80  };
+  if (mins < 60)  return { label: 'Fresh',       color: '#34A853', bg: '#E8F5E9', bar: 60  };
+  if (mins < 90)  return { label: 'Still warm',  color: '#5F9EA0', bg: '#E8F4F4', bar: 35  };
+  return               { label: 'Getting old',  color: '#ADADAD', bg: '#F5F5F5', bar: 15  };
 }
 
 const FRESHNESS_LIMIT_MS = 2 * 60 * 60 * 1000;
 
-// ── Data ─────────────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────────
 const BUSINESS_TYPES = [
-  { id: 'bakery',     icon: '🥖', label: 'Bakery',      labelFr: 'Boulangerie' },
-  { id: 'pizzeria',   icon: '🍕', label: 'Pizzeria',    labelFr: 'Pizzeria' },
-  { id: 'pastry',     icon: '🥐', label: 'Pastry shop', labelFr: 'Pâtisserie' },
-  { id: 'restaurant', icon: '🍽️', label: 'Restaurant',  labelFr: 'Restaurant' },
-  { id: 'cafe',       icon: '☕', label: 'Café',         labelFr: 'Café' },
-  { id: 'other',      icon: '🏪', label: 'Other',       labelFr: 'Autre' },
+  { id: 'bakery',     icon: '🥖', label: 'Bakery'      },
+  { id: 'pizzeria',   icon: '🍕', label: 'Pizzeria'    },
+  { id: 'pastry',     icon: '🥐', label: 'Pastry'      },
+  { id: 'restaurant', icon: '🍽️', label: 'Restaurant'  },
+  { id: 'cafe',       icon: '☕', label: 'Café'         },
+  { id: 'other',      icon: '🏪', label: 'Other'       },
 ];
 
 const PRODUCTS_BY_TYPE = {
-  bakery:     ['Baguette', 'Croissant', 'Pain au chocolat', 'Brioche', 'Ficelle', 'Pain de campagne', 'Fougasse', 'Chausson aux pommes', 'Pain aux noix', 'Bâtard'],
-  pizzeria:   ['Pizza Margherita', 'Pizza 4 formaggi', 'Pizza Pepperoni', 'Pizza Reine', 'Pizza Végétarienne', 'Calzone', 'Focaccia', 'Pizza Napolitaine', 'Pizza du jour'],
-  pastry:     ['Éclair', 'Tarte', 'Mille-feuille', 'Paris-Brest', 'Opéra', 'Religieuse', 'Macaron', 'Kouign-amann', 'Saint-Honoré', 'Choquette'],
-  restaurant: ['Plat du jour', 'Pain maison', 'Tarte salée', 'Quiche', 'Lasagne', 'Gratin', 'Tourte', 'Crumble'],
-  cafe:       ['Muffin', 'Scone', 'Banana bread', 'Cookie', 'Brownie', 'Croissant', 'Pain aux raisins'],
+  bakery:     ['Baguette','Croissant','Pain au chocolat','Brioche','Ficelle','Pain de campagne','Fougasse','Chausson aux pommes','Pain aux noix'],
+  pizzeria:   ['Pizza Margherita','Pizza 4 formaggi','Pizza Pepperoni','Pizza Reine','Pizza Végétarienne','Calzone','Focaccia','Pizza du jour'],
+  pastry:     ['Éclair','Tarte','Mille-feuille','Paris-Brest','Opéra','Macaron','Kouign-amann','Saint-Honoré'],
+  restaurant: ['Plat du jour','Pain maison','Tarte salée','Quiche','Lasagne','Gratin','Tourte'],
+  cafe:       ['Muffin','Scone','Banana bread','Cookie','Brownie','Croissant'],
   other:      [],
 };
 
 const QUANTITIES = [
-  { id: 'plenty', badge: '🔥🔥🔥', label: 'Plenty',    color: '#e65100' },
-  { id: 'some',   badge: '🔥🔥',   label: 'A few',     color: '#f57c00' },
-  { id: 'last',   badge: '⚡ Last!', label: 'Last ones!', color: '#c62828' },
+  { id: 'plenty', emoji: '🔥', label: 'Plenty',    sub: 'Large batch', color: '#FF5000', bg: '#FFF0EB' },
+  { id: 'some',   emoji: '✨', label: 'A few',      sub: 'Limited',     color: '#FF9500', bg: '#FFF8EC' },
+  { id: 'last',   emoji: '⚡', label: 'Last ones!', sub: 'Hurry up',    color: '#C0392B', bg: '#FDECEA' },
 ];
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-const S = {
-  app:      { fontFamily: "'Segoe UI', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#fafafa' },
-  header:   { background: 'linear-gradient(135deg, #e65c00, #f9a825)', color: 'white', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  hCenter:  { textAlign: 'center' },
-  title:    { margin: 0, fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' },
-  sub:      { margin: '2px 0 0', fontSize: 12, opacity: 0.9 },
-  backBtn:  { position: 'absolute', left: 14, background: 'none', border: 'none', color: 'white', fontSize: 24, cursor: 'pointer', padding: 0, lineHeight: 1 },
-  body:     { padding: '16px' },
-  card:     { background: 'white', borderRadius: 14, padding: 16, marginBottom: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.08)' },
-  btn:      { background: 'linear-gradient(135deg, #e65c00, #f9a825)', color: 'white', border: 'none', borderRadius: 10, padding: '13px 20px', fontSize: 15, fontWeight: 700, cursor: 'pointer', width: '100%', marginBottom: 8 },
-  btnGhost: { background: 'white', color: '#e65c00', border: '2px solid #e65c00', borderRadius: 10, padding: '11px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', width: '100%', marginBottom: 8 },
-  input:    { width: '100%', padding: '11px 13px', borderRadius: 9, border: '2px solid #eee', fontSize: 15, boxSizing: 'border-box', marginBottom: 10, outline: 'none' },
-  select:   { width: '100%', padding: '11px 13px', borderRadius: 9, border: '2px solid #eee', fontSize: 15, boxSizing: 'border-box', marginBottom: 10, background: 'white' },
-  label:    { display: 'block', fontSize: 11, fontWeight: 700, color: '#aaa', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.5px' },
-  tag:      { display: 'inline-block', background: '#fff3e0', color: '#e65c00', borderRadius: 20, padding: '3px 10px', fontSize: 13, fontWeight: 700, marginRight: 4, marginBottom: 2 },
-  modeCard: { background: 'white', borderRadius: 16, padding: '18px 16px', marginBottom: 12, boxShadow: '0 2px 10px rgba(0,0,0,0.07)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 },
-  error:    { color: '#c62828', fontSize: 13, margin: '4px 0' },
-  pill:     { display: 'inline-block', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700 },
-  filterBtn:{ borderRadius: 20, padding: '6px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer', border: '2px solid #eee', background: 'white', marginRight: 6, marginBottom: 6, whiteSpace: 'nowrap' },
-  badge:    { background: '#e65c00', color: 'white', borderRadius: 10, padding: '1px 9px', fontSize: 12, fontWeight: 700 },
-  dot:      { width: 8, height: 8, borderRadius: '50%', background: '#4caf50', display: 'inline-block', marginRight: 5 },
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:      '#F2F1EE',
+  card:    '#FFFFFF',
+  primary: '#FF5000',
+  dark:    '#1C1C1E',
+  text:    '#1C1C1E',
+  muted:   '#8E8E93',
+  faint:   '#C7C7CC',
+  border:  '#EFEFEF',
+  light:   '#FFF0EB',
 };
+
+const T = {
+  h2:    { fontSize: 20, fontWeight: 700, color: C.text, margin: 0, letterSpacing: '-0.3px' },
+  h3:    { fontSize: 16, fontWeight: 700, color: C.text, margin: 0 },
+  small: { fontSize: 12, fontWeight: 500, color: C.muted },
+  label: { fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.6px', display: 'block', marginBottom: 8 },
+};
+
+const shadow = { sm: '0 1px 4px rgba(0,0,0,0.06)', md: '0 4px 16px rgba(0,0,0,0.08)' };
+
+// ── Mini-components ───────────────────────────────────────────────────────────
+const Card = ({ children, style }) => (
+  <div style={{ background: C.card, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: shadow.sm, ...style }}>
+    {children}
+  </div>
+);
+
+const Btn = ({ children, onClick, disabled, ghost }) => (
+  <button onClick={onClick} disabled={disabled} style={{
+    display: 'block', width: '100%', padding: '15px 20px', borderRadius: 14,
+    border: ghost ? `2px solid ${C.primary}` : 'none',
+    background: ghost ? 'transparent' : 'linear-gradient(135deg, #FF5000, #FF8C42)',
+    color: ghost ? C.primary : 'white',
+    fontSize: 15, fontWeight: 700, fontFamily: 'inherit',
+    cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.5 : 1,
+    marginBottom: 8, letterSpacing: '-0.1px',
+  }}>
+    {children}
+  </button>
+);
+
+const Input = ({ value, onChange, placeholder, style }) => (
+  <input value={value} onChange={onChange} placeholder={placeholder} style={{
+    width: '100%', padding: '13px 14px', borderRadius: 12,
+    border: `2px solid ${C.border}`, fontSize: 15, fontFamily: 'inherit',
+    fontWeight: 500, color: C.text, background: 'white',
+    boxSizing: 'border-box', marginBottom: 14, ...style,
+  }} />
+);
+
+const Select = ({ value, onChange, children }) => (
+  <select value={value} onChange={onChange} style={{
+    width: '100%', padding: '13px 14px', borderRadius: 12,
+    border: `2px solid ${C.border}`, fontSize: 15, fontFamily: 'inherit',
+    fontWeight: 500, color: C.text, background: 'white',
+    boxSizing: 'border-box', marginBottom: 14, appearance: 'none',
+  }}>
+    {children}
+  </select>
+);
+
+const Tag = ({ children }) => (
+  <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: 100, fontSize: 13, fontWeight: 600, background: C.light, color: C.primary, marginRight: 4, marginBottom: 4 }}>
+    {children}
+  </span>
+);
+
+const FreshBar = ({ dateStr }) => {
+  const { bar, color } = freshnessInfo(dateStr);
+  return (
+    <div style={{ height: 3, background: C.border, borderRadius: 10, overflow: 'hidden', marginTop: 8 }}>
+      <div style={{ height: '100%', width: `${bar}%`, background: color, borderRadius: 10 }} />
+    </div>
+  );
+};
+
+const LiveDot = () => (
+  <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#34A853', display: 'inline-block', boxShadow: '0 0 0 2px rgba(52,168,83,0.25)', flexShrink: 0 }} />
+);
+
+const BackHeader = ({ title, sub, onBack }) => (
+  <div style={{ background: C.dark, padding: '20px 20px 24px', position: 'relative' }}>
+    <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 22, cursor: 'pointer', padding: 0, position: 'absolute', left: 20, top: 22 }}>←</button>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ ...T.h2, color: 'white' }}>{title}</div>
+      {sub && <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>{sub}</div>}
+    </div>
+  </div>
+);
+
+const APP = { fontFamily: 'Inter, system-ui, sans-serif', maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: C.bg };
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
@@ -102,60 +171,34 @@ export default function App() {
   const [justDone, setJustDone]           = useState(false);
   const [now, setNow]                     = useState(Date.now());
 
-  // Tick every 30s to refresh time labels
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30000);
-    return () => clearInterval(t);
-  }, []);
-
-  // Persist favorites & myVenue
+  useEffect(() => { const t = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(t); }, []);
   useEffect(() => { localStorage.setItem('hn_favs', JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('hn_mine', JSON.stringify(myVenue)); }, [myVenue]);
+  useEffect(() => { setProduct(PRODUCTS_BY_TYPE[venueType]?.[0] || ''); setCustomProduct(''); }, [venueType]);
 
-  // Sync product list when type changes
-  useEffect(() => {
-    const list = PRODUCTS_BY_TYPE[venueType] || [];
-    setProduct(list[0] || '');
-    setCustomProduct('');
-  }, [venueType]);
-
-  // Load data + real-time subscription
   const loadData = useCallback(async () => {
     setLoading(true);
     const cutoff = new Date(Date.now() - FRESHNESS_LIMIT_MS).toISOString();
-
-    const [{ data: venueData }, { data: itemData }] = await Promise.all([
+    const [{ data: v }, { data: i }] = await Promise.all([
       supabase.from('venues').select('*'),
       supabase.from('items').select('*').gte('at', cutoff).order('at', { ascending: false }),
     ]);
-
-    if (venueData) setVenues(venueData);
-    if (itemData)  setItems(itemData);
+    if (v) setVenues(v);
+    if (i) setItems(i);
     setLoading(false);
   }, []);
 
   useEffect(() => {
     loadData();
-
-    // Real-time: items inserted or deleted
-    const channel = supabase
-      .channel('hotnow-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' }, payload => {
-        setItems(prev => [payload.new, ...prev]);
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' }, payload => {
-        setItems(prev => prev.filter(i => i.id !== payload.old.id));
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'venues' }, payload => {
-        setVenues(prev => [...prev, payload.new]);
-      })
+    const ch = supabase.channel('hn-rt')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' },  p => setItems(prev => [p.new, ...prev]))
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' },  p => setItems(prev => prev.filter(i => i.id !== p.old.id)))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'venues' }, p => setVenues(prev => [...prev, p.new]))
       .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    return () => supabase.removeChannel(ch);
   }, [loadData]);
 
-  // Auto-expire old items on tick
-  useEffect(() => {
+  useEffect(() => { // eslint-disable-line
     const cutoff = Date.now() - FRESHNESS_LIMIT_MS;
     setItems(prev => prev.filter(i => new Date(i.at).getTime() > cutoff));
   }, [now]);
@@ -163,11 +206,7 @@ export default function App() {
   const getLocation = (cb) => {
     if (!navigator.geolocation) { setLocError('Geolocation not supported.'); return; }
     navigator.geolocation.getCurrentPosition(
-      p => {
-        const l = { lat: p.coords.latitude, lng: p.coords.longitude };
-        setUserLoc(l); setLocError('');
-        if (cb) cb(l);
-      },
+      p => { const l = { lat: p.coords.latitude, lng: p.coords.longitude }; setUserLoc(l); setLocError(''); if (cb) cb(l); },
       () => setLocError('Could not get your location. Please allow location access.')
     );
   };
@@ -177,11 +216,7 @@ export default function App() {
     const bt = BUSINESS_TYPES.find(b => b.id === venueType);
     const v = { id: Date.now().toString(), name: venueName.trim(), type: venueType, icon: bt.icon, lat: loc.lat, lng: loc.lng };
     const { error } = await supabase.from('venues').insert(v);
-    if (!error) {
-      setMyVenue(v);
-      setVenueName('');
-      setScreen('dashboard');
-    }
+    if (!error) { setMyVenue(v); setVenueName(''); setScreen('dashboard'); }
     setSaving(false);
   };
 
@@ -189,250 +224,205 @@ export default function App() {
     const name = customProduct.trim() || product;
     if (!name) return;
     setSaving(true);
-    await supabase.from('items').insert({
-      id: Date.now().toString(),
-      venue_id: myVenue.id,
-      product: name,
-      quantity,
-      at: new Date().toISOString(),
-    });
+    await supabase.from('items').insert({ id: Date.now().toString(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString() });
     setCustomProduct('');
     setJustDone(true);
-    setTimeout(() => setJustDone(false), 3000);
+    setTimeout(() => setJustDone(false), 4000);
     setSaving(false);
   };
 
-  const removeItem = async (id) => {
-    await supabase.from('items').delete().eq('id', id);
-  };
-
-  const toggleFav = (id) =>
-    setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+  const removeItem = (id) => supabase.from('items').delete().eq('id', id);
+  const toggleFav  = (id) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
 
   // ── HOME ──────────────────────────────────────────────────────────────────
   if (screen === 'home') return (
-    <div style={S.app}>
-      <div style={{ ...S.header, flexDirection: 'column', padding: '28px 20px' }}>
-        <div style={{ fontSize: 44, marginBottom: 8 }}>🔥</div>
-        <h1 style={{ ...S.title, fontSize: 30 }}>HotNow</h1>
-        <p style={{ ...S.sub, fontSize: 13 }}>Fresh from the oven · right now · near you</p>
-      </div>
-      <div style={S.body}>
-        {/* Live counter */}
-        <div style={{ textAlign: 'center', margin: '8px 0 20px' }}>
-          <span style={S.dot} />
-          <span style={{ fontSize: 13, color: '#888' }}>
-            {loading ? 'Loading…' : `${items.length} fresh item${items.length !== 1 ? 's' : ''} live right now`}
+    <div style={APP}>
+      <div style={{ background: C.dark, padding: '52px 24px 40px', textAlign: 'center' }}>
+        <div style={{ fontSize: 56, marginBottom: 14, filter: 'drop-shadow(0 4px 16px rgba(255,80,0,0.45))' }}>🔥</div>
+        <h1 style={{ fontSize: 38, fontWeight: 800, color: 'white', margin: 0, letterSpacing: '-1px' }}>HotNow</h1>
+        <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: '10px 0 0', fontWeight: 500 }}>
+          Fresh from the oven · right now · near you
+        </p>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 22, background: 'rgba(255,255,255,0.07)', borderRadius: 100, padding: '8px 18px' }}>
+          <LiveDot />
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontWeight: 600 }}>
+            {loading ? 'Loading…' : `${items.length} fresh item${items.length !== 1 ? 's' : ''} live`}
           </span>
         </div>
+      </div>
 
-        <div style={S.modeCard} onClick={() => myVenue ? setScreen('dashboard') : setScreen('register')}>
-          <div style={{ fontSize: 38 }}>🏪</div>
-          <div>
-            <strong style={{ fontSize: 16 }}>I run a venue</strong>
-            <p style={{ color: '#aaa', fontSize: 13, margin: '3px 0 0' }}>Bakery, pizzeria, café… announce fresh batches</p>
-          </div>
-        </div>
-
-        <div style={S.modeCard} onClick={() => { setScreen('explore'); getLocation(); }}>
-          <div style={{ fontSize: 38 }}>📍</div>
-          <div>
-            <strong style={{ fontSize: 16 }}>I'm hungry</strong>
-            <p style={{ color: '#aaa', fontSize: 13, margin: '3px 0 0' }}>Find fresh food near me, right now</p>
-          </div>
-        </div>
-
-        {favorites.length > 0 && (
-          <div style={S.modeCard} onClick={() => { setScreen('favorites'); getLocation(); }}>
-            <div style={{ fontSize: 38 }}>❤️</div>
-            <div>
-              <strong style={{ fontSize: 16 }}>My favorites</strong>
-              <p style={{ color: '#aaa', fontSize: 13, margin: '3px 0 0' }}>{favorites.length} saved spot{favorites.length > 1 ? 's' : ''}</p>
+      <div style={{ padding: '20px 16px' }}>
+        <p style={{ ...T.small, textAlign: 'center', marginBottom: 16 }}>WHO ARE YOU?</p>
+        {[
+          { icon: '🏪', title: 'I run a venue',  sub: 'Bakery, pizzeria, café… announce your fresh batches', action: () => myVenue ? setScreen('dashboard') : setScreen('register') },
+          { icon: '🧭', title: "I'm hungry",      sub: 'Find fresh food near me, right now',                  action: () => { setScreen('explore'); getLocation(); } },
+          ...(favorites.length > 0 ? [{ icon: '❤️', title: 'My favorites', sub: `${favorites.length} saved spot${favorites.length > 1 ? 's' : ''}`, action: () => { setScreen('favorites'); getLocation(); } }] : []),
+        ].map((m, i) => (
+          <div key={i} onClick={m.action} style={{ background: C.card, borderRadius: 20, padding: '18px 20px', marginBottom: 10, boxShadow: shadow.sm, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 52, height: 52, borderRadius: 16, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0 }}>{m.icon}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ ...T.h3, marginBottom: 3 }}>{m.title}</div>
+              <div style={{ fontSize: 13, color: C.muted }}>{m.sub}</div>
             </div>
+            <div style={{ color: C.faint, fontSize: 22, fontWeight: 300 }}>›</div>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
 
-  // ── REGISTER ──────────────────────────────────────────────────────────────
+  // ── REGISTER ────────────────────────────────────────────────────────────────
   if (screen === 'register') return (
-    <div style={S.app}>
-      <div style={S.header}>
-        <button style={S.backBtn} onClick={() => setScreen('home')}>←</button>
-        <div style={S.hCenter}><h1 style={S.title}>My venue</h1><p style={S.sub}>Setup</p></div>
-      </div>
-      <div style={S.body}>
-        <div style={S.card}>
-          <label style={S.label}>Type of venue</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14 }}>
+    <div style={APP}>
+      <BackHeader title="Register venue" sub="One-time setup" onBack={() => setScreen('home')} />
+      <div style={{ padding: 16 }}>
+        <Card>
+          <label style={T.label}>Type of venue</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
             {BUSINESS_TYPES.map(bt => (
               <button key={bt.id} onClick={() => setVenueType(bt.id)} style={{
-                ...S.filterBtn, marginBottom: 0,
-                background: venueType === bt.id ? '#e65c00' : 'white',
-                color: venueType === bt.id ? 'white' : '#333',
-                border: `2px solid ${venueType === bt.id ? '#e65c00' : '#eee'}`,
+                padding: '8px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                border: `2px solid ${venueType === bt.id ? C.primary : C.border}`,
+                background: venueType === bt.id ? C.light : 'white',
+                color: venueType === bt.id ? C.primary : C.muted,
               }}>
                 {bt.icon} {bt.label}
               </button>
             ))}
           </div>
-
-          <label style={S.label}>Venue name</label>
-          <input
-            style={S.input}
-            value={venueName}
-            onChange={e => setVenueName(e.target.value)}
-            placeholder="e.g. Boulangerie Martin, Pizzeria Roma…"
-          />
-
-          {locError && <p style={S.error}>{locError}</p>}
-
-          <button style={S.btn} disabled={saving} onClick={() => {
-            if (!venueName.trim()) return;
-            getLocation(loc => registerVenue(loc));
-          }}>
-            {saving ? 'Registering…' : '📍 Register with my GPS location'}
-          </button>
-          <p style={{ color: '#ccc', fontSize: 12, textAlign: 'center', margin: 0 }}>
-            Your location is only used so customers can find you.
-          </p>
-        </div>
+          <label style={T.label}>Venue name</label>
+          <Input value={venueName} onChange={e => setVenueName(e.target.value)} placeholder="e.g. Boulangerie Martin, Pizzeria Roma…" />
+          {locError && <p style={{ color: '#C0392B', fontSize: 13, margin: '-6px 0 10px' }}>{locError}</p>}
+          <Btn onClick={() => { if (!venueName.trim()) return; getLocation(loc => registerVenue(loc)); }} disabled={saving}>
+            {saving ? 'Registering…' : '📍 Register with GPS'}
+          </Btn>
+          <p style={{ ...T.small, textAlign: 'center', margin: '4px 0 0' }}>Your location is only used so customers can find you.</p>
+        </Card>
       </div>
     </div>
   );
 
-  // ── DASHBOARD ─────────────────────────────────────────────────────────────
+  // ── DASHBOARD ────────────────────────────────────────────────────────────────
   if (screen === 'dashboard') {
-    const myItems = items.filter(i => i.venue_id === myVenue.id);
+    const myItems     = items.filter(i => i.venue_id === myVenue.id);
     const productList = PRODUCTS_BY_TYPE[myVenue.type] || [];
-
     return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <button style={S.backBtn} onClick={() => setScreen('home')}>←</button>
-          <div style={S.hCenter}>
-            <h1 style={S.title}>{myVenue.icon} {myVenue.name}</h1>
-            <p style={S.sub}>Dashboard · <span style={S.dot} />Live</p>
+      <div style={APP}>
+        <div style={{ background: C.dark, padding: '20px 20px 24px', position: 'relative' }}>
+          <button onClick={() => setScreen('home')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 22, cursor: 'pointer', padding: 0, position: 'absolute', left: 20, top: 22 }}>←</button>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 4 }}>{myVenue.icon} {myVenue.name}</div>
+            <div style={{ ...T.h2, color: 'white' }}>Dashboard</div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, background: 'rgba(255,255,255,0.07)', borderRadius: 100, padding: '6px 14px' }}>
+              <LiveDot />
+              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{myItems.length} live</span>
+            </div>
           </div>
         </div>
-        <div style={S.body}>
-
-          {/* Announce card */}
-          <div style={S.card}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 16 }}>🔥 Announce a fresh batch</h3>
-
-            <label style={S.label}>Product</label>
+        <div style={{ padding: 16 }}>
+          <Card>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: C.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>🔥</div>
+              <div style={T.h3}>Announce a fresh batch</div>
+            </div>
+            <label style={T.label}>Product</label>
             {productList.length > 0 && (
-              <select style={S.select} value={product} onChange={e => { setProduct(e.target.value); setCustomProduct(''); }}>
+              <Select value={product} onChange={e => { setProduct(e.target.value); setCustomProduct(''); }}>
                 {productList.map(p => <option key={p}>{p}</option>)}
-              </select>
+              </Select>
             )}
-            <input
-              style={S.input}
-              value={customProduct}
-              onChange={e => setCustomProduct(e.target.value)}
-              placeholder={productList.length > 0 ? 'Or type a custom product…' : 'Product name…'}
-            />
-
-            <label style={S.label}>Quantity</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+            <Input value={customProduct} onChange={e => setCustomProduct(e.target.value)}
+              placeholder={productList.length > 0 ? 'Or type a custom product…' : 'Product name…'} />
+            <label style={T.label}>Quantity</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
               {QUANTITIES.map(q => (
                 <button key={q.id} onClick={() => setQuantity(q.id)} style={{
-                  flex: 1, padding: '9px 4px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                  border: `2px solid ${quantity === q.id ? q.color : '#eee'}`,
-                  background: quantity === q.id ? q.color : 'white',
-                  color: quantity === q.id ? 'white' : '#666',
+                  padding: '12px 8px', borderRadius: 14, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'center',
+                  border: `2px solid ${quantity === q.id ? q.color : C.border}`,
+                  background: quantity === q.id ? q.bg : 'white',
                 }}>
-                  {q.badge}
+                  <div style={{ fontSize: 22, marginBottom: 4 }}>{q.emoji}</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: quantity === q.id ? q.color : C.muted }}>{q.label}</div>
+                  <div style={{ fontSize: 10, color: C.faint, marginTop: 1 }}>{q.sub}</div>
                 </button>
               ))}
             </div>
+            {justDone
+              ? <div style={{ background: '#E8F5E9', borderRadius: 12, padding: 14, textAlign: 'center', color: '#2E7D32', fontWeight: 700, fontSize: 14 }}>✅ Live! Customers can see it now.</div>
+              : <Btn onClick={announce} disabled={saving}>{saving ? 'Publishing…' : '📣 Out of the oven NOW!'}</Btn>
+            }
+          </Card>
 
-            <button style={S.btn} disabled={saving} onClick={announce}>
-              {saving ? 'Announcing…' : '📣 Out of the oven NOW!'}
-            </button>
-            {justDone && <p style={{ color: '#2e7d32', fontSize: 14, textAlign: 'center', margin: 0 }}>✅ Live! Customers can see it.</p>}
-          </div>
-
-          {/* Live items */}
-          <div style={S.card}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Live right now</h3>
-              <span style={S.badge}>{myItems.length}</span>
+          <Card>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: myItems.length ? 16 : 0 }}>
+              <div style={T.h3}>Live right now</div>
+              <span style={{ background: C.primary, color: 'white', borderRadius: 100, padding: '2px 10px', fontSize: 12, fontWeight: 700 }}>{myItems.length}</span>
             </div>
             {myItems.length === 0
-              ? <p style={{ color: '#ccc', fontSize: 14, margin: 0 }}>Nothing announced yet.</p>
-              : myItems.map(it => {
+              ? <p style={{ ...T.small, textAlign: 'center', margin: '10px 0 4px' }}>Nothing announced yet.</p>
+              : myItems.map((it, idx) => {
                   const f = freshnessInfo(it.at);
                   const q = QUANTITIES.find(q => q.id === it.quantity);
                   return (
-                    <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 0', borderBottom: '1px solid #f5f5f5' }}>
-                      <div>
-                        <span style={S.tag}>{it.product}</span>
-                        {q && <span style={{ fontSize: 13 }}>{q.badge}</span>}
-                        <div style={{ fontSize: 12, color: '#bbb', marginTop: 2 }}>{timeAgo(it.at)}</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ ...S.pill, background: f.bg, color: f.color }}>{f.label}</span>
-                        <button onClick={() => removeItem(it.id)} style={{ background: 'none', border: 'none', color: '#ddd', fontSize: 22, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}>×</button>
+                    <div key={it.id} style={{ paddingTop: idx > 0 ? 14 : 0, marginTop: idx > 0 ? 14 : 0, borderTop: idx > 0 ? `1px solid ${C.border}` : 'none' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <Tag>{it.product}</Tag>
+                            {q && <span style={{ fontSize: 13, color: q.color, fontWeight: 700 }}>{q.emoji} {q.label}</span>}
+                          </div>
+                          <div style={{ ...T.small, marginTop: 5 }}>
+                            <span style={{ color: f.color, fontWeight: 600 }}>{f.label}</span>
+                            <span style={{ color: C.faint }}> · {timeAgo(it.at)}</span>
+                          </div>
+                          <FreshBar dateStr={it.at} />
+                        </div>
+                        <button onClick={() => removeItem(it.id)} style={{ background: 'none', border: 'none', color: C.faint, fontSize: 22, cursor: 'pointer', padding: '0 0 0 12px', lineHeight: 1 }}>×</button>
                       </div>
                     </div>
                   );
                 })
             }
-            {myItems.length > 0 && <p style={{ color: '#ddd', fontSize: 11, margin: '10px 0 0' }}>Items auto-expire after 2 hours.</p>}
-          </div>
-
-          <button style={S.btnGhost} onClick={() => { setMyVenue(null); localStorage.removeItem('hn_mine'); setScreen('register'); }}>
-            Switch venue
-          </button>
+            {myItems.length > 0 && <p style={{ ...T.small, margin: '14px 0 0', borderTop: `1px solid ${C.border}`, paddingTop: 12 }}>Items auto-expire after 2 hours.</p>}
+          </Card>
+          <Btn ghost onClick={() => { setMyVenue(null); localStorage.removeItem('hn_mine'); setScreen('register'); }}>Switch venue</Btn>
         </div>
       </div>
     );
   }
 
-  // ── EXPLORE / FAVORITES ───────────────────────────────────────────────────
+  // ── EXPLORE / FAVORITES ────────────────────────────────────────────────────
   if (screen === 'explore' || screen === 'favorites') {
-    const isFavScreen = screen === 'favorites';
-
-    const enriched = venues
-      .map(v => {
-        const dist = userLoc ? getDistance(userLoc.lat, userLoc.lng, v.lat, v.lng) : null;
-        const hotItems = items.filter(i => i.venue_id === v.id);
-        return { ...v, distance: dist, hotItems };
-      })
+    const isFav     = screen === 'favorites';
+    const enriched  = venues
+      .map(v => ({ ...v, distance: userLoc ? getDistance(userLoc.lat, userLoc.lng, v.lat, v.lng) : null, hotItems: items.filter(i => i.venue_id === v.id) }))
       .filter(v => v.hotItems.length > 0)
-      .filter(v => !isFavScreen || favorites.includes(v.id))
+      .filter(v => !isFav || favorites.includes(v.id))
       .filter(v => filterType === 'all' || v.type === filterType)
       .sort((a, b) => (a.distance ?? 9999) - (b.distance ?? 9999));
-
-    const activeTypes = [...new Set(
-      venues.filter(v => items.some(i => i.venue_id === v.id)).map(v => v.type)
-    )];
+    const activeTypes = [...new Set(venues.filter(v => items.some(i => i.venue_id === v.id)).map(v => v.type))];
 
     return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <button style={S.backBtn} onClick={() => setScreen('home')}>←</button>
-          <div style={S.hCenter}>
-            <h1 style={S.title}>{isFavScreen ? '❤️ Favorites' : '🔥 HotNow'}</h1>
-            <p style={S.sub}>
-              {loading ? 'Loading…' : isFavScreen ? 'Your saved spots' : `${enriched.length} spot${enriched.length !== 1 ? 's' : ''} near you`}
-            </p>
+      <div style={APP}>
+        <div style={{ background: C.dark, padding: '20px 20px 24px', position: 'relative' }}>
+          <button onClick={() => setScreen('home')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', fontSize: 22, cursor: 'pointer', padding: 0, position: 'absolute', left: 20, top: 22 }}>←</button>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ ...T.h2, color: 'white' }}>{isFav ? '❤️ Favorites' : '🔥 HotNow'}</div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', marginTop: 4 }}>
+              {loading ? 'Loading…' : isFav ? 'Your saved spots' : `${enriched.length} fresh spot${enriched.length !== 1 ? 's' : ''} near you`}
+            </div>
           </div>
         </div>
-        <div style={S.body}>
 
-          {/* Filter bar */}
-          {!isFavScreen && activeTypes.length > 1 && (
-            <div style={{ display: 'flex', overflowX: 'auto', paddingBottom: 4, marginBottom: 8 }}>
+        <div style={{ padding: '14px 16px 0' }}>
+          {!isFav && activeTypes.length > 1 && (
+            <div style={{ display: 'flex', overflowX: 'auto', gap: 8, paddingBottom: 14 }}>
               {[{ id: 'all', icon: '🌍', label: 'All' }, ...BUSINESS_TYPES.filter(b => activeTypes.includes(b.id))].map(bt => (
                 <button key={bt.id} onClick={() => setFilterType(bt.id)} style={{
-                  ...S.filterBtn,
-                  background: filterType === bt.id ? '#e65c00' : 'white',
-                  color: filterType === bt.id ? 'white' : '#555',
-                  border: `2px solid ${filterType === bt.id ? '#e65c00' : '#eee'}`,
+                  padding: '7px 14px', borderRadius: 100, fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                  border: `2px solid ${filterType === bt.id ? C.primary : C.border}`,
+                  background: filterType === bt.id ? C.light : C.card,
+                  color: filterType === bt.id ? C.primary : C.muted,
                 }}>
                   {bt.icon} {bt.label}
                 </button>
@@ -440,87 +430,78 @@ export default function App() {
             </div>
           )}
 
-          {/* Location loading */}
           {!userLoc && !locError && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#bbb' }}>📍 Getting your location…</div>
+            <Card style={{ textAlign: 'center', padding: '32px 20px' }}>
+              <div style={{ fontSize: 32, marginBottom: 10 }}>📍</div>
+              <div style={{ ...T.h3, marginBottom: 6 }}>Getting your location…</div>
+              <div style={T.small}>Allow location access to see nearby spots</div>
+            </Card>
           )}
-          {locError && (
-            <div style={S.card}>
-              <p style={S.error}>{locError}</p>
-              <button style={S.btn} onClick={() => { setLocError(''); getLocation(); }}>Retry</button>
-            </div>
-          )}
+          {locError && <Card><p style={{ color: '#C0392B', fontSize: 14, margin: '0 0 12px' }}>{locError}</p><Btn onClick={() => { setLocError(''); getLocation(); }}>Try again</Btn></Card>}
+          {loading && <div style={{ textAlign: 'center', padding: '40px 0', color: C.muted, fontSize: 14 }}>⏳ Loading fresh items…</div>}
 
-          {/* Loading */}
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#bbb' }}>⏳ Loading fresh items…</div>
-          )}
-
-          {/* Empty state */}
           {!loading && userLoc && enriched.length === 0 && (
-            <div style={{ ...S.card, textAlign: 'center', padding: '36px 20px' }}>
-              <div style={{ fontSize: 44, marginBottom: 10 }}>{isFavScreen ? '❤️' : '😔'}</div>
-              <p style={{ color: '#666', margin: '0 0 6px', fontWeight: 600 }}>
-                {isFavScreen ? 'No fresh items at your favorites right now.' : 'Nothing fresh nearby right now.'}
-              </p>
-              <p style={{ color: '#bbb', fontSize: 13, margin: 0 }}>
-                Items appear for up to 2h after being announced.
-              </p>
-            </div>
+            <Card style={{ textAlign: 'center', padding: '36px 20px' }}>
+              <div style={{ fontSize: 44, marginBottom: 12 }}>{isFav ? '❤️' : '🍞'}</div>
+              <div style={{ ...T.h3, marginBottom: 8 }}>{isFav ? 'No fresh items at your favorites' : 'Nothing fresh nearby'}</div>
+              <div style={{ fontSize: 14, color: C.muted }}>Items appear for up to 2 hours after being announced.</div>
+            </Card>
           )}
 
-          {/* Venue cards */}
           {enriched.map(v => {
-            const isFav = favorites.includes(v.id);
+            const isFaved = favorites.includes(v.id);
             return (
-              <div key={v.id} style={S.card}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                  <div>
-                    <span style={{ fontSize: 20, marginRight: 6 }}>{v.icon}</span>
-                    <strong style={{ fontSize: 16 }}>{v.name}</strong>
-                    <div style={{ fontSize: 12, color: '#bbb', marginTop: 2 }}>
-                      {BUSINESS_TYPES.find(b => b.id === v.type)?.label}
+              <Card key={v.id} style={{ padding: '18px 20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{v.icon}</div>
+                    <div>
+                      <div style={T.h3}>{v.name}</div>
+                      <div style={{ ...T.small, marginTop: 2 }}>{BUSINESS_TYPES.find(b => b.id === v.type)?.label}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6 }}>
                     {v.distance !== null && (
-                      <span style={{ fontSize: 14, color: '#e65c00', fontWeight: 700 }}>
-                        {v.distance < 1 ? `${Math.round(v.distance * 1000)} m` : `${v.distance.toFixed(1)} km`}
-                      </span>
+                      <div style={{ background: C.light, color: C.primary, borderRadius: 100, padding: '4px 10px', fontSize: 12, fontWeight: 700 }}>
+                        {v.distance < 1 ? `${Math.round(v.distance * 1000)}m` : `${v.distance.toFixed(1)}km`}
+                      </div>
                     )}
-                    <button onClick={() => toggleFav(v.id)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: 0, lineHeight: 1 }}>
-                      {isFav ? '❤️' : '🤍'}
+                    <button onClick={() => toggleFav(v.id)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', padding: 0, lineHeight: 1 }}>
+                      {isFaved ? '❤️' : '🤍'}
                     </button>
                   </div>
                 </div>
 
-                {v.hotItems.map(it => {
+                {v.hotItems.map((it, idx) => {
                   const f = freshnessInfo(it.at);
                   const q = QUANTITIES.find(q => q.id === it.quantity);
                   return (
-                    <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderTop: '1px solid #f5f5f5' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={S.tag}>{it.product}</span>
-                        {q && (
-                          <span style={{ ...S.pill, background: it.quantity === 'last' ? '#ffebee' : '#fff3e0', color: q.color }}>
-                            {q.badge}
-                          </span>
+                    <div key={it.id} style={{ paddingTop: 12, marginTop: 12, borderTop: `1px solid ${C.border}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                            <Tag>{it.product}</Tag>
+                            {q && <span style={{ fontSize: 12, color: q.color, fontWeight: 700 }}>{q.emoji} {q.label}</span>}
+                          </div>
+                          <div style={{ ...T.small, marginTop: 5 }}>
+                            <span style={{ color: f.color, fontWeight: 600 }}>{f.label}</span>
+                            <span style={{ color: C.faint }}> · {timeAgo(it.at)}</span>
+                          </div>
+                        </div>
+                        {idx === 0 && v.hotItems.length > 1 && (
+                          <span style={{ fontSize: 11, color: C.faint, marginLeft: 8, marginTop: 4, flexShrink: 0 }}>+{v.hotItems.length - 1} more</span>
                         )}
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 8 }}>
-                        <span style={{ ...S.pill, background: f.bg, color: f.color }}>{f.label}</span>
-                        <div style={{ fontSize: 11, color: '#ccc', marginTop: 2 }}>{timeAgo(it.at)}</div>
-                      </div>
+                      {idx === 0 && <FreshBar dateStr={it.at} />}
                     </div>
                   );
                 })}
-              </div>
+              </Card>
             );
           })}
 
-          <button style={S.btnGhost} onClick={() => { setUserLoc(null); setLocError(''); getLocation(); loadData(); }}>
-            🔄 Refresh
-          </button>
+          <Btn ghost onClick={() => { setUserLoc(null); setLocError(''); getLocation(); loadData(); }}>🔄 Refresh</Btn>
+          <div style={{ height: 16 }} />
         </div>
       </div>
     );

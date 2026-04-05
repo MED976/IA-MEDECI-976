@@ -5,9 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>HotNow – Fresh from the oven</title>
 
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#e65c00" />
+    <meta name="theme-color" content="#1C1C1E" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,8 +26,16 @@
 
     <style>
       *, *::before, *::after { box-sizing: border-box; }
-      body { margin: 0; background: #fafafa; -webkit-tap-highlight-color: transparent; }
-      input:focus, select:focus { border-color: #e65c00 !important; }
+      body {
+        margin: 0;
+        background: #F2F1EE;
+        font-family: 'Inter', system-ui, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        -webkit-font-smoothing: antialiased;
+      }
+      input:focus, select:focus { outline: none; border-color: #FF5000 !important; box-shadow: 0 0 0 3px rgba(255,80,0,0.08) !important; }
+      button:active { opacity: 0.85; transform: scale(0.98); }
+      ::-webkit-scrollbar { display: none; }
     </style>
   </head>
   <body>
