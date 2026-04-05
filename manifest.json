@@ -1,0 +1,14 @@
+{
+  "name": "HotNow – Fresh from the oven",
+  "short_name": "HotNow",
+  "description": "Find fresh food right out of the oven near you",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#e65c00",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,13 +1,28 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>HotNow – Fresh from the oven</title>
-    <meta name="theme-color" content="#c8571b" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#e65c00" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="HotNow" />
+
+    <!-- SEO -->
+    <meta name="description" content="Find fresh food right out of the oven near you. Bakeries, pizzerias, pastry shops — updated in real time." />
+    <meta property="og:title" content="HotNow – Fresh from the oven" />
+    <meta property="og:description" content="Discover bakeries and pizzerias with fresh items right now, near you." />
+    <meta property="og:type" content="website" />
+
     <style>
-      body { margin: 0; background: #fdf8f0; }
-      * { box-sizing: border-box; }
+      *, *::before, *::after { box-sizing: border-box; }
+      body { margin: 0; background: #fafafa; -webkit-tap-highlight-color: transparent; }
+      input:focus, select:focus { border-color: #e65c00 !important; }
     </style>
   </head>
   <body>
