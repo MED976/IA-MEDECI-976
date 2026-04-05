@@ -27,11 +27,24 @@ function freshnessColor(dateStr) {
   return { bg: '#f5f5f5', color: '#757575', label: 'Encore chaud' };
 }
 
-const PRODUCTS = [
-  'Baguette', 'Croissant', 'Pain au chocolat', 'Brioche',
-  'Ficelle', 'Pain de campagne', 'Fougasse', 'Chausson aux pommes',
-  'Éclair', 'Tarte', 'Mille-feuille', 'Paris-Brest',
-];
+const CATEGORIES = {
+  '🥖 Boulangerie': [
+    'Baguette', 'Croissant', 'Pain au chocolat', 'Brioche',
+    'Ficelle', 'Pain de campagne', 'Fougasse', 'Chausson aux pommes',
+    'Éclair', 'Tarte', 'Mille-feuille', 'Paris-Brest',
+  ],
+  '🍕 Pizzeria': [
+    'Pizza Margherita', 'Pizza 4 fromages', 'Pizza Reine',
+    'Pizza Pepperoni', 'Pizza Végétarienne', 'Pizza Calzone',
+    'Pizza Napolitaine', 'Focaccia',
+  ],
+  '🥐 Viennoiserie': [
+    'Kouign-amann', 'Escargot raisin', 'Palmier', 'Choquette',
+    'Tresse au beurre', 'Pain aux raisins',
+  ],
+};
+
+const ALL_PRODUCTS = Object.values(CATEGORIES).flat();
 
 const FRESHNESS_LIMIT_MS = 2 * 60 * 60 * 1000; // 2 heures
 
@@ -167,7 +180,7 @@ export default function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [locationError, setLocationError] = useState('');
   const [bakeryName, setBakeryName] = useState('');
-  const [selectedProduct, setSelectedProduct] = useState(PRODUCTS[0]);
+  const [selectedProduct, setSelectedProduct] = useState(ALL_PRODUCTS[0]);
   const [now, setNow] = useState(Date.now());
   const [justAnnounced, setJustAnnounced] = useState(false);
 
@@ -235,8 +248,8 @@ export default function App() {
     return (
       <div style={s.app}>
         <div style={{ ...s.header, flexDirection: 'column', padding: '20px' }}>
-          <h1 style={{ ...s.title, fontSize: 26 }}>🥖 FourChaud</h1>
-          <p style={{ ...s.sub, fontSize: 13 }}>Le pain frais, en temps réel</p>
+          <h1 style={{ ...s.title, fontSize: 26 }}>🔥 HotNow</h1>
+          <p style={{ ...s.sub, fontSize: 13 }}>Fresh from the oven, right now</p>
         </div>
         <div style={s.body}>
           <p style={{ color: '#888', textAlign: 'center', marginBottom: 20, fontSize: 15 }}>
@@ -250,7 +263,7 @@ export default function App() {
             <div style={s.bigEmoji}>🏪</div>
             <strong style={{ fontSize: 17 }}>Une boulangerie</strong>
             <p style={{ color: '#888', fontSize: 14, margin: '6px 0 0' }}>
-              Annoncez vos produits tout juste sortis du four
+              Boulangerie, pizzeria… annoncez vos fournées en temps réel
             </p>
           </div>
 
@@ -335,7 +348,11 @@ export default function App() {
               value={selectedProduct}
               onChange={e => setSelectedProduct(e.target.value)}
             >
-              {PRODUCTS.map(p => <option key={p}>{p}</option>)}
+              {Object.entries(CATEGORIES).map(([cat, items]) => (
+              <optgroup key={cat} label={cat}>
+                {items.map(p => <option key={p}>{p}</option>)}
+              </optgroup>
+            ))}
             </select>
             <button style={s.btn} onClick={announceProduct}>
               📣 Sortie du four maintenant !
@@ -445,8 +462,8 @@ export default function App() {
         <div style={s.header}>
           <button style={s.backBtn} onClick={() => setMode('home')}>←</button>
           <div style={s.headerCenter}>
-            <h1 style={s.title}>🥐 Frais du four</h1>
-            <p style={s.sub}>Boulangeries près de vous</p>
+            <h1 style={s.title}>🔥 HotNow</h1>
+            <p style={s.sub}>Fresh spots near you</p>
           </div>
         </div>
         <div style={s.body}>
