@@ -19,27 +19,27 @@ export default function LandingPage({ onExplore, onRegister }) {
   ];
 
   const STEPS_VENUE = [
-    { icon: '📝', title: 'Register once', desc: 'Enter your venue name, type and confirm your GPS position. It takes 30 seconds.' },
-    { icon: '📣', title: 'Tap when it\'s out', desc: 'Select the product, quantity level, press the button. Your announcement goes live instantly.' },
-    { icon: '🔥', title: 'Customers rush in', desc: 'Nearby hungry customers see your venue appear at the top of the HotNow feed.' },
+    { icon: '📝', title: 'Inscrivez-vous en 30 secondes', desc: 'Entrez le nom de votre établissement, son type et confirmez votre position GPS. C\'est tout.' },
+    { icon: '📣', title: 'Appuyez quand c\'est prêt', desc: 'Sélectionnez le produit, la quantité, appuyez sur le bouton. Votre annonce est en ligne instantanément.' },
+    { icon: '🔥', title: 'Les clients arrivent', desc: 'Les clients affamés à proximité voient votre établissement apparaître en tête du fil HotNow.' },
   ];
 
   const STEPS_CUSTOMER = [
-    { icon: '📍', title: 'Open HotNow', desc: 'The app shows you every fresh batch announced near you right now.' },
-    { icon: '❤️', title: 'Save favourites', desc: 'Bookmark your go-to bakeries and get notified the next time they announce.' },
-    { icon: '🚶', title: 'Walk over', desc: 'A freshness bar tells you how much time you have before it gets cold.' },
+    { icon: '📍', title: 'Ouvrez HotNow', desc: 'L\'application vous montre toutes les fournées fraîches annoncées près de vous en ce moment.' },
+    { icon: '❤️', title: 'Sauvegardez vos favoris', desc: 'Mettez en favori vos boulangeries préférées et soyez alerté à la prochaine fournée.' },
+    { icon: '🚶', title: 'Rendez-vous sur place', desc: 'Une barre de fraîcheur vous indique le temps qu\'il vous reste avant que ce soit froid.' },
   ];
 
   const TESTIMONIALS = [
-    { quote: '"Since using HotNow, my croissants sell out 20 minutes after leaving the oven."', name: 'Marie L.', role: 'Bakery owner, Lyon' },
-    { quote: '"I finally know exactly when to go to the bakery downstairs. No more cold bread!"', name: 'Thomas K.', role: 'Customer, Paris' },
-    { quote: '"Registered in under a minute. My pizza queue doubles on lunch days now."', name: 'Enzo R.', role: 'Pizzeria owner, Marseille' },
+    { quote: '"Depuis que j\'utilise HotNow, mes croissants sont vendus 20 minutes après la sortie du four."', name: 'Marie L.', role: 'Boulangère, Lyon' },
+    { quote: '"Je sais enfin exactement quand descendre à la boulangerie. Plus jamais de pain froid !"', name: 'Thomas K.', role: 'Client, Paris' },
+    { quote: '"Inscrit en moins d\'une minute. Ma file d\'attente double les midis maintenant."', name: 'Enzo R.', role: 'Pizzaïolo, Marseille' },
   ];
 
   const STATS = [
-    { value: '2 min', label: 'Average time to announce a batch' },
-    { value: '100%', label: 'Free for venues to get started' },
-    { value: '2 h', label: 'Real-time window per announcement' },
+    { value: '2 min', label: 'Pour annoncer une fournée' },
+    { value: '100%', label: 'Gratuit pour les établissements' },
+    { value: '2 h', label: 'Fenêtre de fraîcheur en temps réel' },
   ];
 
   // ── Shared helpers ──────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ export default function LandingPage({ onExplore, onRegister }) {
           <span style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.3px' }}>HotNow</span>
         </div>
         <button onClick={onRegister} style={btn(true, true)}>
-          Register my venue
+          Inscrire mon établissement
         </button>
       </div>
 
@@ -80,39 +80,39 @@ export default function LandingPage({ onExplore, onRegister }) {
         {/* ambient glow */}
         <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={pill('For bakeries & food venues', true)}>For bakeries & food venues 🔥</div>
+        <div style={pill('Pour les boulangers & restaurateurs', true)}>Pour les boulangers & restaurateurs 🔥</div>
 
         <h1 style={{ fontSize: 38, fontWeight: 900, color: 'white', margin: '0 0 18px', lineHeight: 1.15, letterSpacing: '-1px' }}>
-          Your oven just beeped.<br />
+          Le four vient de sonner.<br />
           <span style={{ background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Tell the world.
+            Dites-le au monde.
           </span>
         </h1>
 
         <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 36px', maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
-          HotNow lets food venues announce fresh batches in real time. Hungry customers nearby see your venue instantly.
+          HotNow permet aux établissements d'annoncer leurs fournées en temps réel. Les clients affamés à proximité vous voient instantanément.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
           <button onClick={onRegister} style={{ ...btn(true), width: '100%', maxWidth: 320, fontSize: 16 }}>
-            🏪 Register my venue — it's free
+            🏪 Inscrire mon établissement — c'est gratuit
           </button>
           <button onClick={onExplore} style={{ ...btn(false), width: '100%', maxWidth: 320, fontSize: 15 }}>
-            🔍 Explore fresh food near me
+            🔍 Voir les fournées près de moi
           </button>
         </div>
 
         {/* Live badge */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 28, background: 'rgba(255,255,255,0.07)', borderRadius: 100, padding: '8px 16px' }}>
           <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1DB954', display: 'inline-block', boxShadow: '0 0 6px #1DB954' }} />
-          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Live announcements · updated in real time</span>
+          <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>Annonces en direct · mis à jour en temps réel</span>
         </div>
       </div>
 
       {/* ── LIVE PREVIEW MOCK ── */}
       <div style={{ background: C.black, padding: '0 20px 48px' }}>
         <div style={{ background: '#181818', borderRadius: 20, padding: '16px', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>Live near you right now</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>En direct près de vous</div>
           {[
             { icon: '🥖', name: 'Boulangerie Martin', type: 'Bakery', product: 'Baguettes', qty: '🔥 Plenty', time: '2m ago', badge: 'Just out!', badgeColor: '#FF5000' },
             { icon: '🍕', name: 'Pizzeria Roma', type: 'Pizzeria', product: 'Pizza Margherita', qty: '✨ A few', time: '18m ago', badge: 'Very fresh', badgeColor: '#FF7A00' },
@@ -147,12 +147,12 @@ export default function LandingPage({ onExplore, onRegister }) {
 
       {/* ── FOR VENUES ── */}
       <div style={{ background: C.offWhite, padding: '52px 20px' }}>
-        <div style={pill()}>For venue owners</div>
+        <div style={pill()}>Pour les établissements</div>
         <h2 style={{ fontSize: 28, fontWeight: 900, color: C.black, margin: '0 0 8px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-          Turn hot batches into instant foot traffic
+          Transformez chaque fournée en trafic immédiat
         </h2>
         <p style={{ fontSize: 15, color: C.muted, margin: '0 0 36px', lineHeight: 1.6 }}>
-          No app install needed for your customers. No subscription fee. One tap and you're live.
+          Vos clients n'ont rien à installer. Pas d'abonnement. Un appui et vous êtes en ligne.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {STEPS_VENUE.map((s, i) => (
@@ -171,12 +171,12 @@ export default function LandingPage({ onExplore, onRegister }) {
 
       {/* ── BUSINESS TYPES ── */}
       <div style={{ background: C.black, padding: '48px 20px' }}>
-        <div style={pill('Who can join', true)}>Who can join</div>
+        <div style={pill('Qui peut rejoindre', true)}>Qui peut rejoindre</div>
         <h2 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: '0 0 8px', letterSpacing: '-0.5px' }}>
-          Every business that bakes, roasts or cooks
+          Tous ceux qui cuisinent, cuisent ou rôtissent
         </h2>
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', lineHeight: 1.6 }}>
-          If you have an oven, HotNow is for you.
+          Si vous avez un four, HotNow est fait pour vous.
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
           {TYPES.map((t, i) => (
@@ -190,12 +190,12 @@ export default function LandingPage({ onExplore, onRegister }) {
 
       {/* ── FOR CUSTOMERS ── */}
       <div style={{ background: C.white, padding: '52px 20px' }}>
-        <div style={pill()}>For customers</div>
+        <div style={pill()}>Pour les clients</div>
         <h2 style={{ fontSize: 28, fontWeight: 900, color: C.black, margin: '0 0 8px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-          Never miss a fresh batch again
+          Ne ratez plus jamais une fournée
         </h2>
         <p style={{ fontSize: 15, color: C.muted, margin: '0 0 36px', lineHeight: 1.6 }}>
-          See what's just come out of the oven near you, right now.
+          Voyez ce qui sort du four près de chez vous, maintenant.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {STEPS_CUSTOMER.map((s, i) => (
@@ -209,15 +209,15 @@ export default function LandingPage({ onExplore, onRegister }) {
           ))}
         </div>
         <button onClick={onExplore} style={{ ...btn(false), border: `2px solid ${C.border}`, background: 'white', color: C.black, marginTop: 32, width: '100%' }}>
-          🔍 See what's fresh near me
+          🔍 Voir les fournées près de moi
         </button>
       </div>
 
       {/* ── TESTIMONIALS ── */}
       <div style={{ background: C.offWhite, padding: '52px 20px' }}>
-        <div style={pill()}>What they say</div>
+        <div style={pill()}>Ce qu'ils en disent</div>
         <h2 style={{ fontSize: 28, fontWeight: 900, color: C.black, margin: '0 0 28px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
-          They tried it. They love it.
+          Ils ont essayé. Ils adorent.
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {TESTIMONIALS.map((t, i) => (
@@ -243,17 +243,17 @@ export default function LandingPage({ onExplore, onRegister }) {
         <div style={{ position: 'absolute', bottom: -80, left: '50%', transform: 'translateX(-50%)', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
         <div style={{ fontSize: 52, marginBottom: 20 }}>🔥</div>
         <h2 style={{ fontSize: 32, fontWeight: 900, color: 'white', margin: '0 0 12px', letterSpacing: '-0.5px', lineHeight: 1.15 }}>
-          Ready to fill your<br />
-          <span style={{ background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>shop every bake?</span>
+          Prêt à remplir votre<br />
+          <span style={{ background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>boutique à chaque fournée ?</span>
         </h2>
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 36px', lineHeight: 1.6 }}>
-          Free. Takes 30 seconds. No credit card. No commitment.
+          Gratuit. 30 secondes. Sans carte bancaire. Sans engagement.
         </p>
         <button onClick={onRegister} style={{ ...btn(true), width: '100%', fontSize: 17, padding: '18px 28px', borderRadius: 16, boxShadow: '0 6px 30px rgba(255,80,0,0.4)' }}>
-          🏪 Register my venue for free
+          🏪 Inscrire mon établissement gratuitement
         </button>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', marginTop: 16 }}>
-          You keep full control. Delete anytime.
+          Vous gardez le contrôle. Supprimable à tout moment.
         </p>
       </div>
 
@@ -264,7 +264,7 @@ export default function LandingPage({ onExplore, onRegister }) {
           <span style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>HotNow</span>
         </div>
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.25)', margin: 0, lineHeight: 1.6 }}>
-          Real-time food freshness. Right now.
+          La fraîcheur en temps réel. Maintenant.
         </p>
       </div>
 
