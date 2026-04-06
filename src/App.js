@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
+import LandingPage from './LandingPage';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -63,6 +64,7 @@ const C = {
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
+  const [view, setView]                    = useState(() => localStorage.getItem('hn_seen') ? 'app' : 'landing');
   const [tab, setTab]                     = useState('explore'); // explore | favorites | venue
   const [venues, setVenues]               = useState([]);
   const [items, setItems]                 = useState([]);
@@ -162,7 +164,17 @@ export default function App() {
 
   const activeTypes = [...new Set(venues.filter(v => items.some(i => i.venue_id === v.id)).map(v => v.type))];
 
+  const goToApp = useCallback((targetTab = 'explore') => {
+    localStorage.setItem('hn_seen', '1');
+    setTab(targetTab);
+    setView('app');
+  }, []);
+
   // ── Layout ────────────────────────────────────────────────────────────────
+  if (view === 'landing') {
+    return <LandingPage onExplore={() => goToApp('explore')} onRegister={() => goToApp('venue')} />;
+  }
+
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column' }}>
 
