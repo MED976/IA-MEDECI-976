@@ -1,41 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>HotNow – Fresh from the oven</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>HotNow – Fournées en direct</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
 
     <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#1C1C1E" />
+    <meta name="theme-color" content="#0A0A0A" />
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS / Apple -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="HotNow" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/icon-144.png" />
+    <link rel="apple-touch-icon" sizes="128x128" href="/icon-128.png" />
+    <!-- iOS splash screens -->
+    <meta name="apple-mobile-web-app-orientations" content="portrait" />
 
-    <!-- SEO -->
-    <meta name="description" content="Find fresh food right out of the oven near you. Bakeries, pizzerias, pastry shops — updated in real time." />
-    <meta property="og:title" content="HotNow – Fresh from the oven" />
-    <meta property="og:description" content="Discover bakeries and pizzerias with fresh items right now, near you." />
+    <!-- Android -->
+    <meta name="msapplication-TileColor" content="#0A0A0A" />
+    <meta name="msapplication-TileImage" content="/icon-144.png" />
+
+    <!-- SEO & Open Graph -->
+    <meta name="description" content="Trouvez les fournées fraîches près de vous en temps réel. Boulangeries, pizzerias, pâtisseries — mis à jour en direct." />
+    <meta name="keywords" content="boulangerie, pain frais, fournée, pizzeria, HotNow, nourriture fraîche" />
+    <meta property="og:title" content="HotNow – Fournées en direct" />
+    <meta property="og:description" content="Découvrez les boulangeries et pizzerias avec des produits frais sortis du four, près de chez vous." />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://hotnow.app" />
+    <meta property="og:image" content="https://hotnow.app/icon-512.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="HotNow" />
+    <meta name="twitter:description" content="Fournées fraîches en temps réel près de vous." />
+
+    <!-- Capacitor -->
+    <script>
+      // Prevent bounce scroll on iOS inside Capacitor
+      document.addEventListener('touchmove', function(e) {
+        if (e.target === document.body) e.preventDefault();
+      }, { passive: false });
+    </script>
 
     <style>
       *, *::before, *::after { box-sizing: border-box; }
+      html, body {
+        margin: 0; padding: 0;
+        height: 100%;
+        overscroll-behavior: none;
+      }
       body {
-        margin: 0;
-        background: #F2F1EE;
+        background: #0A0A0A;
         font-family: 'Inter', system-ui, sans-serif;
         -webkit-tap-highlight-color: transparent;
         -webkit-font-smoothing: antialiased;
+        -webkit-overflow-scrolling: touch;
+        /* Safe area for notch phones */
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
       }
+      #root { height: 100%; background: #F6F6F6; }
       input:focus, select:focus { outline: none; border-color: #FF5000 !important; box-shadow: 0 0 0 3px rgba(255,80,0,0.08) !important; }
       button:active { opacity: 0.85; transform: scale(0.98); }
       ::-webkit-scrollbar { display: none; }
+      * { -webkit-user-select: none; user-select: none; }
+      input, textarea { -webkit-user-select: text; user-select: text; }
     </style>
   </head>
   <body>
