@@ -212,6 +212,58 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         </div>
       </div>
 
+      {/* ── PRICING ── */}
+      <div style={{ background: C.black, padding: '52px 20px' }}>
+        <div style={pill(t.pricingPill, true)}>{t.pricingPill}</div>
+        <h2 style={{ fontSize: 28, fontWeight: 900, color: 'white', margin: '0 0 8px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{t.pricingTitle}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 32px', lineHeight: 1.6 }}>{t.pricingSub}</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {t.plans.map((plan, i) => (
+            <div key={i} style={{
+              borderRadius: 20, padding: '24px 20px', position: 'relative', overflow: 'hidden',
+              background: plan.highlight ? 'white' : 'rgba(255,255,255,0.06)',
+              border: plan.highlight ? 'none' : '1px solid rgba(255,255,255,0.1)',
+              boxShadow: plan.highlight ? '0 8px 40px rgba(255,80,0,0.25)' : 'none',
+            }}>
+              {plan.highlight && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: grad }} />}
+              {plan.badge && (
+                <div style={{ display: 'inline-block', background: '#FFF0EB', color: '#FF5000', fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 100, marginBottom: 12 }}>
+                  {plan.badge}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: plan.highlight ? C.black : 'white' }}>{plan.name}</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+                  <span style={{ fontSize: 28, fontWeight: 900, color: plan.highlight ? C.primary : 'white' }}>{plan.price}</span>
+                  <span style={{ fontSize: 13, color: plan.highlight ? C.muted : 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{plan.period}</span>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: plan.highlight ? C.muted : 'rgba(255,255,255,0.45)', margin: '0 0 16px' }}>{plan.desc}</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
+                {plan.features.map((f, fi) => (
+                  <div key={fi} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: plan.highlight ? '#FF5000' : '#1DB954', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                    <span style={{ fontSize: 14, color: plan.highlight ? C.black : 'rgba(255,255,255,0.75)', fontWeight: 500 }}>{f}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={() => plan.ctaAction === 'stripe' ? window.open(process.env.REACT_APP_STRIPE_LINK || 'https://buy.stripe.com/hotnow-pro', '_blank') : onRegister()}
+                style={{
+                  display: 'block', width: '100%', padding: '14px', borderRadius: 12, fontFamily: 'inherit',
+                  cursor: 'pointer', fontSize: 15, fontWeight: 700, border: 'none',
+                  background: plan.highlight ? grad : 'rgba(255,255,255,0.1)',
+                  color: 'white',
+                  boxShadow: plan.highlight ? '0 4px 16px rgba(255,80,0,0.35)' : 'none',
+                }}>
+                {plan.cta}
+              </button>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center', marginTop: 16 }}>{t.pricingNote}</p>
+      </div>
+
       {/* ── FINAL CTA ── */}
       <div style={{ background: C.black, padding: '60px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
         <div style={{ position: 'absolute', bottom: -80, left: '50%', transform: 'translateX(-50%)', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />

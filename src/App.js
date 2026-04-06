@@ -38,6 +38,12 @@ const C = {
   faint: '#BBBBBB', border: '#EEEEEE', light: '#FFF0EB',
 };
 
+const FREE_DAILY_LIMIT = 5;
+
+function todayKey() { return 'hn_daily_' + new Date().toISOString().slice(0, 10); }
+function getDailyCount() { return parseInt(localStorage.getItem(todayKey()) || '0', 10); }
+function incDailyCount() { localStorage.setItem(todayKey(), getDailyCount() + 1); }
+
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
   const [lang, setLang]                    = useState(() => localStorage.getItem('hn_lang') || 'fr');
@@ -60,14 +66,36 @@ export default function App() {
   const [justDone, setJustDone]            = useState(false);
   const [venueScreen, setVenueScreen]      = useState('dashboard');
   const [now, setNow]                      = useState(Date.now());
+  const [showUpgrade, setShowUpgrade]      = useState(false);
+  const [proJustActivated, setProJustActivated] = useState(false);
+  const [dailyCount, setDailyCount]        = useState(getDailyCount);
 
   const t = T[lang].app;
+
+  // ── Plan helpers ──────────────────────────────────────────────────────────
+  const isPro = myVenue?.plan === 'pro';
+  const dailyLeft = Math.max(0, FREE_DAILY_LIMIT - dailyCount);
+  const canAnnounce = isPro || dailyLeft > 0;
 
   useEffect(() => { localStorage.setItem('hn_lang', lang); }, [lang]);
   useEffect(() => { const i = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(i); }, []);
   useEffect(() => { localStorage.setItem('hn_favs', JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('hn_mine', JSON.stringify(myVenue)); }, [myVenue]);
   useEffect(() => { setProduct(PRODUCTS_BY_TYPE[venueType]?.[0] || ''); setCustomProduct(''); }, [venueType]);
+
+  // ── Stripe return: activate Pro ───────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === 'true' && myVenue) {
+      const upgraded = { ...myVenue, plan: 'pro' };
+      setMyVenue(upgraded);
+      supabase.from('venues').update({ plan: 'pro' }).eq('id', myVenue.id);
+      setProJustActivated(true);
+      setTimeout(() => setProJustActivated(false), 5000);
+      goToApp('venue');
+      window.history.replaceState({}, '', '/');
+    }
+  }, []); // eslint-disable-line
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -118,9 +146,11 @@ export default function App() {
   const announce = async () => {
     const name = customProduct.trim() || product;
     if (!name) return;
+    if (!isPro && dailyLeft <= 0) { setShowUpgrade(true); return; }
     setSaving(true);
     await supabase.from('items').insert({ id: Date.now().toString(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString() });
     setCustomProduct('');
+    if (!isPro) { incDailyCount(); setDailyCount(getDailyCount()); }
     setJustDone(true);
     setTimeout(() => setJustDone(false), 4000);
     setSaving(false);
@@ -158,6 +188,34 @@ export default function App() {
     color: active ? C.black : 'rgba(255,255,255,0.5)',
   });
 
+  const stripeLink = process.env.REACT_APP_STRIPE_LINK || '#';
+
+  // ── Upgrade modal ─────────────────────────────────────────────────────────
+  const UpgradeModal = () => (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+      onClick={() => setShowUpgrade(false)}>
+      <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '32px 24px 40px', width: '100%', maxWidth: 480 }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
+          <h2 style={{ fontSize: 24, fontWeight: 900, margin: '0 0 8px', letterSpacing: '-0.5px' }}>{t.upgradeTitle}</h2>
+          <p style={{ fontSize: 15, color: '#757575', margin: 0, lineHeight: 1.5 }}>{t.upgradeSub}</p>
+        </div>
+        <div style={{ background: '#FFF0EB', borderRadius: 16, padding: '16px 20px', marginBottom: 20, textAlign: 'center' }}>
+          <span style={{ fontSize: 28, fontWeight: 900, color: '#FF5000' }}>{t.upgradePrice}</span>
+        </div>
+        <a href={`${stripeLink}?client_reference_id=${myVenue?.id}`}
+          style={{ display: 'block', width: '100%', padding: '16px', borderRadius: 14, fontFamily: 'inherit', cursor: 'pointer', fontSize: 16, fontWeight: 700, border: 'none', background: 'linear-gradient(135deg,#FF5000,#FF8C42)', color: 'white', textAlign: 'center', textDecoration: 'none', boxShadow: '0 4px 20px rgba(255,80,0,0.35)', boxSizing: 'border-box' }}>
+          {t.upgradeBtn}
+        </a>
+        <p style={{ fontSize: 12, color: '#AAAAAA', textAlign: 'center', margin: '10px 0 16px' }}>{t.upgradeNote}</p>
+        <button onClick={() => setShowUpgrade(false)} style={{ display: 'block', width: '100%', padding: '13px', borderRadius: 12, border: '2px solid #EEEEEE', background: 'transparent', color: '#757575', fontSize: 14, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+          {t.upgradeLater}
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Layout ────────────────────────────────────────────────────────────────
   if (view === 'landing') {
     return <LandingPage onExplore={() => goToApp('explore')} onRegister={() => goToApp('venue')} lang={lang} setLang={setLang} />;
@@ -165,6 +223,7 @@ export default function App() {
 
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column' }}>
+      {showUpgrade && <UpgradeModal />}
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
 
@@ -273,7 +332,10 @@ export default function App() {
                     <div style={{ padding: '14px 16px 16px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                         <div>
-                          <div style={{ fontSize: 17, fontWeight: 800, color: C.text, marginBottom: 2 }}>{v.name}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <span style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{v.name}</span>
+                            {v.plan === 'pro' && <span style={{ fontSize: 10, fontWeight: 800, color: '#FF5000', background: '#FFF0EB', padding: '2px 6px', borderRadius: 6 }}>⭐ PRO</span>}
+                          </div>
                           <div style={{ fontSize: 13, color: C.muted }}>{v.bt?.label} · {t.timeAgo(mins)}</div>
                         </div>
                         {v.hotItems.length > 1 && (
@@ -356,6 +418,27 @@ export default function App() {
                 const productList = PRODUCTS_BY_TYPE[myVenue.type] || [];
                 return (
                   <>
+                    {/* ── Plan status ── */}
+                    {proJustActivated && (
+                      <div style={{ background: '#E8F5E9', borderRadius: 16, padding: '14px 18px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20 }}>⭐</span>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1A8917' }}>{t.proActivated}</span>
+                      </div>
+                    )}
+                    <div style={{ background: isPro ? 'linear-gradient(135deg,#FF5000,#FF8C42)' : C.card, borderRadius: 16, padding: '14px 18px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: isPro ? '0 4px 16px rgba(255,80,0,0.25)' : '0 1px 4px rgba(0,0,0,0.06)' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: isPro ? 'rgba(255,255,255,0.7)' : C.muted, marginBottom: 2 }}>{isPro ? t.planPro : t.planFree}</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: isPro ? 'white' : C.text }}>
+                          {isPro ? '∞ annonces' : (dailyLeft > 0 ? t.dailyLeft(dailyLeft) : t.dailyExhausted)}
+                        </div>
+                      </div>
+                      {!isPro && (
+                        <button onClick={() => setShowUpgrade(true)} style={{ background: 'linear-gradient(135deg,#FF5000,#FF8C42)', border: 'none', borderRadius: 10, padding: '8px 14px', color: 'white', fontSize: 12, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          ⭐ Pro
+                        </button>
+                      )}
+                    </div>
+
                     <div style={{ background: C.card, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 12, background: C.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔥</div>
@@ -389,7 +472,9 @@ export default function App() {
 
                       {justDone
                         ? <div style={{ background: '#E8F5E9', borderRadius: 12, padding: 14, textAlign: 'center', color: '#1A8917', fontWeight: 700, fontSize: 14 }}>{t.liveSuccess}</div>
-                        : <button disabled={saving} onClick={announce} style={btnStyle(C.primary)}>{saving ? t.announcing : t.announceBtn}</button>
+                        : !canAnnounce
+                          ? <button onClick={() => setShowUpgrade(true)} style={{ display: 'block', width: '100%', padding: '15px 20px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg,#FF5000,#FF8C42)', color: 'white', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}>⭐ {t.upgradeBtn}</button>
+                          : <button disabled={saving} onClick={announce} style={btnStyle(C.primary)}>{saving ? t.announcing : t.announceBtn}</button>
                       }
                     </div>
 

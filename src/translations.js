@@ -1,6 +1,5 @@
 const T = {
   fr: {
-    // ── Landing ──────────────────────────────────────────────────────────────
     landing: {
       navCta: 'Inscrire mon établissement',
       pill: 'Pour les boulangers & restaurateurs 🔥',
@@ -13,12 +12,12 @@ const T = {
       liveLabel: 'En direct près de vous',
       stats: [
         { value: '2 min', label: 'Pour annoncer une fournée' },
-        { value: '100%', label: 'Gratuit pour les établissements' },
+        { value: '100%', label: 'Gratuit pour démarrer' },
         { value: '2 h',  label: 'Fenêtre de fraîcheur en temps réel' },
       ],
       venuePill: 'Pour les établissements',
       venueTitle: 'Transformez chaque fournée en trafic immédiat',
-      venueSub: "Vos clients n'ont rien à installer. Pas d'abonnement. Un appui et vous êtes en ligne.",
+      venueSub: "Vos clients n'ont rien à installer. Un appui et vous êtes en ligne.",
       venueSteps: [
         { icon: '📝', title: 'Inscrivez-vous en 30 secondes', desc: "Entrez le nom de votre établissement, son type et confirmez votre position GPS. C'est tout." },
         { icon: '📣', title: "Appuyez quand c'est prêt",      desc: 'Sélectionnez le produit, la quantité, appuyez sur le bouton. Votre annonce est en ligne instantanément.' },
@@ -36,13 +35,54 @@ const T = {
         { icon: '🚶', title: 'Rendez-vous sur place',   desc: "Une barre de fraîcheur vous indique le temps qu'il vous reste avant que ce soit froid." },
       ],
       customerCta: '🔍 Voir les fournées près de moi',
-      testimonialsPill: 'Ce qu\'ils en disent',
+      testimonialsPill: "Ce qu'ils en disent",
       testimonialsTitle: 'Ils ont essayé. Ils adorent.',
       testimonials: [
-        { quote: 'Depuis que j\'utilise HotNow, mes croissants sont vendus 20 minutes après la sortie du four.', name: 'Marie L.', role: 'Boulangère, Lyon' },
+        { quote: "Depuis que j'utilise HotNow, mes croissants sont vendus 20 minutes après la sortie du four.", name: 'Marie L.', role: 'Boulangère, Lyon' },
         { quote: 'Je sais enfin exactement quand descendre à la boulangerie. Plus jamais de pain froid !', name: 'Thomas K.', role: 'Client, Paris' },
         { quote: "Inscrit en moins d'une minute. Ma file d'attente double les midis maintenant.", name: 'Enzo R.', role: 'Pizzaïolo, Marseille' },
       ],
+      // ── Pricing ──
+      pricingPill: 'Tarifs',
+      pricingTitle: 'Simple. Transparent. Rentable.',
+      pricingSub: 'Commencez gratuitement. Passez Pro quand vous êtes prêt.',
+      plans: [
+        {
+          name: 'Gratuit',
+          price: '0€',
+          period: '',
+          badge: null,
+          desc: 'Pour démarrer et tester',
+          features: [
+            '5 annonces par jour',
+            'Visible sur la carte',
+            'Toutes les catégories',
+            'Support par email',
+          ],
+          cta: 'Commencer gratuitement',
+          ctaAction: 'register',
+          highlight: false,
+        },
+        {
+          name: 'Pro',
+          price: '9,99€',
+          period: '/mois',
+          badge: '⭐ Recommandé',
+          desc: 'Pour les pros du four',
+          features: [
+            'Annonces illimitées',
+            'Badge Pro ⭐ sur votre fiche',
+            'Priorité en tête de fil',
+            'Statistiques de vues',
+            'Support prioritaire',
+          ],
+          cta: 'Passer Pro →',
+          ctaAction: 'stripe',
+          highlight: true,
+        },
+      ],
+      pricingNote: 'Sans engagement · Résiliable à tout moment',
+      // ── CTA final ──
       ctaTitle1: 'Prêt à remplir votre',
       ctaTitle2: 'boutique à chaque fournée ?',
       ctaSub: 'Gratuit. 30 secondes. Sans carte bancaire. Sans engagement.',
@@ -50,7 +90,6 @@ const T = {
       ctaNote: 'Vous gardez le contrôle. Supprimable à tout moment.',
       footerTagline: 'La fraîcheur en temps réel. Maintenant.',
     },
-    // ── App ───────────────────────────────────────────────────────────────────
     app: {
       nearYou: '📍 Près de vous',
       savedSpots: '❤️ Mes favoris',
@@ -68,9 +107,9 @@ const T = {
       registerTitle: 'Inscrire mon établissement',
       registerSub: 'Inscrivez votre établissement pour annoncer vos fournées en temps réel.',
       venueTypeLabel: "Type d'établissement",
-      venueNameLabel: 'Nom de l\'établissement',
+      venueNameLabel: "Nom de l'établissement",
       venueNamePlaceholder: 'ex. Boulangerie Martin, Pizzeria Roma…',
-      registerBtn: '📍 S\'inscrire avec le GPS',
+      registerBtn: "📍 S'inscrire avec le GPS",
       registering: 'Inscription en cours…',
       announceTitle: 'Annoncer une fournée',
       productLabel: 'Produit',
@@ -81,14 +120,26 @@ const T = {
       announcing: 'Publication…',
       liveNow: 'En ce moment',
       liveSuccess: '✅ En ligne ! Vos clients peuvent le voir.',
-      nothingLive: 'Rien d\'annoncé pour l\'instant. Appuyez sur le bouton !',
-      switchVenue: 'Changer d\'établissement',
+      nothingLive: "Rien d'annoncé pour l'instant. Appuyez sur le bouton !",
+      switchVenue: "Changer d'établissement",
       locError: 'Impossible d\'obtenir votre position.',
       locErrorRetry: 'Réessayer',
       navDiscover: 'Découvrir',
       navFavorites: 'Favoris',
       navVenue: 'Mon lieu',
-      justNow: 'à l\'instant',
+      // ── Plan / upgrade ──
+      planFree: 'Plan Gratuit',
+      planPro: 'Plan Pro ⭐',
+      planBadgePro: '⭐ PRO',
+      dailyLeft: (n) => `${n} annonce${n > 1 ? 's' : ''} restante${n > 1 ? 's' : ''} aujourd'hui`,
+      dailyExhausted: 'Limite quotidienne atteinte',
+      upgradeTitle: 'Passez Pro 🚀',
+      upgradeSub: 'Annonces illimitées, badge Pro, priorité dans le fil.',
+      upgradePrice: '9,99€ / mois',
+      upgradeBtn: '⭐ Passer Pro maintenant',
+      upgradeNote: 'Sans engagement · Résiliable à tout moment',
+      upgradeLater: 'Peut-être plus tard',
+      proActivated: '⭐ Plan Pro activé ! Bienvenue.',
       businessTypes: [
         { id: 'bakery',     icon: '🥖', label: 'Boulangerie' },
         { id: 'pizzeria',   icon: '🍕', label: 'Pizzeria' },
@@ -106,14 +157,14 @@ const T = {
       allFilter: '⚡ Tout',
       itemsMore: (n) => `+${n} produits`,
       timeAgo: (mins) => {
-        if (mins < 1) return 'à l\'instant';
+        if (mins < 1) return "à l'instant";
         if (mins < 60) return `il y a ${mins} min`;
-        const h = Math.floor(mins / 60); return `il y a ${h}h${mins % 60 > 0 ? (mins%60)+'min' : ''}`;
+        const h = Math.floor(mins / 60); return `il y a ${h}h${mins % 60 > 0 ? (mins % 60) + 'min' : ''}`;
       },
     },
   },
+
   en: {
-    // ── Landing ──────────────────────────────────────────────────────────────
     landing: {
       navCta: 'Register my venue',
       pill: 'For bakeries & food venues 🔥',
@@ -126,15 +177,15 @@ const T = {
       liveLabel: 'Live near you right now',
       stats: [
         { value: '2 min', label: 'To announce a fresh batch' },
-        { value: '100%', label: 'Free for venues to get started' },
+        { value: '100%', label: 'Free to get started' },
         { value: '2 h',  label: 'Real-time freshness window' },
       ],
       venuePill: 'For venue owners',
       venueTitle: 'Turn hot batches into instant foot traffic',
-      venueSub: "No app install needed for your customers. No subscription fee. One tap and you're live.",
+      venueSub: "No app install needed for your customers. One tap and you're live.",
       venueSteps: [
-        { icon: '📝', title: 'Register in 30 seconds', desc: 'Enter your venue name, type and confirm your GPS position. That\'s it.' },
-        { icon: '📣', title: 'Tap when it\'s out',      desc: 'Select the product, quantity level, press the button. Your announcement goes live instantly.' },
+        { icon: '📝', title: 'Register in 30 seconds', desc: "Enter your venue name, type and confirm your GPS position. That's it." },
+        { icon: '📣', title: "Tap when it's out",       desc: 'Select the product, quantity level, press the button. Your announcement goes live instantly.' },
         { icon: '🔥', title: 'Customers rush in',       desc: 'Nearby hungry customers see your venue appear at the top of the HotNow feed.' },
       ],
       typesPill: 'Who can join',
@@ -148,7 +199,7 @@ const T = {
         { icon: '❤️', title: 'Save favourites',    desc: 'Bookmark your go-to bakeries and get notified the next time they announce.' },
         { icon: '🚶', title: 'Walk over',          desc: 'A freshness bar tells you how much time you have before it gets cold.' },
       ],
-      customerCta: '🔍 See what\'s fresh near me',
+      customerCta: "🔍 See what's fresh near me",
       testimonialsPill: 'What they say',
       testimonialsTitle: 'They tried it. They love it.',
       testimonials: [
@@ -156,6 +207,47 @@ const T = {
         { quote: 'I finally know exactly when to go to the bakery downstairs. No more cold bread!', name: 'Thomas K.', role: 'Customer, Paris' },
         { quote: 'Registered in under a minute. My pizza queue doubles on lunch days now.', name: 'Enzo R.', role: 'Pizzeria owner, Marseille' },
       ],
+      // ── Pricing ──
+      pricingPill: 'Pricing',
+      pricingTitle: 'Simple. Transparent. Profitable.',
+      pricingSub: 'Start for free. Go Pro when you are ready.',
+      plans: [
+        {
+          name: 'Free',
+          price: '€0',
+          period: '',
+          badge: null,
+          desc: 'To get started',
+          features: [
+            '5 announcements per day',
+            'Visible on the map',
+            'All categories',
+            'Email support',
+          ],
+          cta: 'Start for free',
+          ctaAction: 'register',
+          highlight: false,
+        },
+        {
+          name: 'Pro',
+          price: '€9.99',
+          period: '/month',
+          badge: '⭐ Recommended',
+          desc: 'For serious bakers',
+          features: [
+            'Unlimited announcements',
+            'Pro badge ⭐ on your listing',
+            'Priority at the top of the feed',
+            'View statistics',
+            'Priority support',
+          ],
+          cta: 'Go Pro →',
+          ctaAction: 'stripe',
+          highlight: true,
+        },
+      ],
+      pricingNote: 'No commitment · Cancel anytime',
+      // ── CTA final ──
       ctaTitle1: 'Ready to fill your',
       ctaTitle2: 'shop every bake?',
       ctaSub: 'Free. Takes 30 seconds. No credit card. No commitment.',
@@ -163,7 +255,6 @@ const T = {
       ctaNote: 'You keep full control. Delete anytime.',
       footerTagline: 'Real-time food freshness. Right now.',
     },
-    // ── App ───────────────────────────────────────────────────────────────────
     app: {
       nearYou: '📍 Near you',
       savedSpots: '❤️ Saved spots',
@@ -201,7 +292,19 @@ const T = {
       navDiscover: 'Discover',
       navFavorites: 'Favorites',
       navVenue: 'My Venue',
-      justNow: 'just now',
+      // ── Plan / upgrade ──
+      planFree: 'Free Plan',
+      planPro: 'Pro Plan ⭐',
+      planBadgePro: '⭐ PRO',
+      dailyLeft: (n) => `${n} announcement${n > 1 ? 's' : ''} left today`,
+      dailyExhausted: 'Daily limit reached',
+      upgradeTitle: 'Go Pro 🚀',
+      upgradeSub: 'Unlimited announcements, Pro badge, priority in the feed.',
+      upgradePrice: '€9.99 / month',
+      upgradeBtn: '⭐ Go Pro now',
+      upgradeNote: 'No commitment · Cancel anytime',
+      upgradeLater: 'Maybe later',
+      proActivated: '⭐ Pro plan activated! Welcome.',
       businessTypes: [
         { id: 'bakery',     icon: '🥖', label: 'Bakery' },
         { id: 'pizzeria',   icon: '🍕', label: 'Pizzeria' },
@@ -221,7 +324,7 @@ const T = {
       timeAgo: (mins) => {
         if (mins < 1) return 'just now';
         if (mins < 60) return `${mins}m ago`;
-        const h = Math.floor(mins / 60); return `${h}h${mins % 60 > 0 ? (mins%60)+'m' : ''} ago`;
+        const h = Math.floor(mins / 60); return `${h}h${mins % 60 > 0 ? (mins % 60) + 'm' : ''} ago`;
       },
     },
   },
