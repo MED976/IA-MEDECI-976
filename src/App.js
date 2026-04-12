@@ -115,6 +115,7 @@ export default function App() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' },  p => setItems(prev => [p.new, ...prev]))
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' },  p => setItems(prev => prev.filter(i => i.id !== p.old.id)))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'venues' }, p => setVenues(prev => [...prev, p.new]))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'venues' }, p => setVenues(prev => prev.map(v => v.id === p.new.id ? { ...v, ...p.new } : v)))
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [loadData]);
@@ -136,23 +137,43 @@ export default function App() {
 
   const registerVenue = async (loc) => {
     setSaving(true);
-    const bt = t.businessTypes.find(b => b.id === venueType);
-    const v = { id: Date.now().toString(), name: venueName.trim(), type: venueType, icon: bt.icon, lat: loc.lat, lng: loc.lng };
-    const { error } = await supabase.from('venues').insert(v);
-    if (!error) { setMyVenue(v); setVenueName(''); setVenueScreen('dashboard'); }
+    try {
+      const bt = t.businessTypes.find(b => b.id === venueType);
+      const v = { id: crypto.randomUUID(), name: venueName.trim(), type: venueType, icon: bt.icon, lat: loc.lat, lng: loc.lng, plan: 'free' };
+      const { error } = await supabase.from('venues').insert(v);
+      if (error) throw error;
+      setMyVenue(v); setVenueName(''); setVenueScreen('dashboard');
+    } catch (e) {
+      setLocError(lang === 'fr' ? 'Erreur d\'inscription. Réessayez.' : 'Registration failed. Please retry.');
+    }
     setSaving(false);
   };
 
   const announce = async () => {
     const name = customProduct.trim() || product;
     if (!name) return;
-    if (!isPro && dailyLeft <= 0) { setShowUpgrade(true); return; }
+    // Vérification côté serveur (non contournable via localStorage)
+    if (!isPro) {
+      const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+      const { count } = await supabase.from('items')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', myVenue.id)
+        .gte('at', todayStart.toISOString());
+      if (count >= FREE_DAILY_LIMIT) { setShowUpgrade(true); setSaving(false); return; }
+    }
     setSaving(true);
-    await supabase.from('items').insert({ id: Date.now().toString(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString() });
-    setCustomProduct('');
-    if (!isPro) { incDailyCount(); setDailyCount(getDailyCount()); }
-    setJustDone(true);
-    setTimeout(() => setJustDone(false), 4000);
+    try {
+      const { error } = await supabase.from('items').insert({
+        id: crypto.randomUUID(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString()
+      });
+      if (error) throw error;
+      setCustomProduct('');
+      if (!isPro) { incDailyCount(); setDailyCount(getDailyCount()); }
+      setJustDone(true);
+      setTimeout(() => setJustDone(false), 4000);
+    } catch {
+      // silently ignore — user can retry
+    }
     setSaving(false);
   };
 
@@ -170,7 +191,12 @@ export default function App() {
     .filter(v => v.hotItems.length > 0)
     .filter(v => tab === 'favorites' ? favorites.includes(v.id) : true)
     .filter(v => filterType === 'all' || v.type === filterType)
-    .sort((a, b) => (a.distance ?? 9999) - (b.distance ?? 9999));
+    // Pro venues float up at equal distance (±200m)
+    .sort((a, b) => {
+      const da = a.distance ?? 9999, db = b.distance ?? 9999;
+      if (Math.abs(da - db) < 0.2 && a.plan !== b.plan) return a.plan === 'pro' ? -1 : 1;
+      return da - db;
+    });
 
   const activeTypes = [...new Set(venues.filter(v => items.some(i => i.venue_id === v.id)).map(v => v.type))];
 
@@ -336,7 +362,17 @@ export default function App() {
                             <span style={{ fontSize: 17, fontWeight: 800, color: C.text }}>{v.name}</span>
                             {v.plan === 'pro' && <span style={{ fontSize: 10, fontWeight: 800, color: '#FF5000', background: '#FFF0EB', padding: '2px 6px', borderRadius: 6 }}>⭐ PRO</span>}
                           </div>
-                          <div style={{ fontSize: 13, color: C.muted }}>{v.bt?.label} · {t.timeAgo(mins)}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, color: C.muted }}>{v.bt?.label} · {t.timeAgo(mins)}</span>
+                            <button onClick={() => {
+                              if (window.confirm(lang === 'fr' ? 'Signaler une fausse annonce ?' : 'Report a false announcement?')) {
+                                supabase.from('reports').insert({ venue_id: v.id, item_id: topItem.id, at: new Date().toISOString() }).then(() => {});
+                                alert(lang === 'fr' ? 'Merci, signalement envoyé.' : 'Thank you, report sent.');
+                              }
+                            }} style={{ background: 'none', border: 'none', color: C.faint, fontSize: 11, cursor: 'pointer', padding: 0, fontFamily: 'inherit', textDecoration: 'underline' }}>
+                              {lang === 'fr' ? 'Signaler' : 'Report'}
+                            </button>
+                          </div>
                         </div>
                         {v.hotItems.length > 1 && (
                           <div style={{ background: C.black, color: 'white', borderRadius: 100, padding: '3px 10px', fontSize: 12, fontWeight: 700, flexShrink: 0, marginLeft: 8, marginTop: 2 }}>
@@ -403,8 +439,8 @@ export default function App() {
                     ))}
                   </div>
                   <label style={labelStyle}>{t.venueNameLabel}</label>
-                  <input value={venueName} onChange={e => setVenueName(e.target.value)}
-                    placeholder={t.venueNamePlaceholder} style={inputStyle} />
+                  <input value={venueName} onChange={e => setVenueName(e.target.value.slice(0, 60))}
+                    placeholder={t.venueNamePlaceholder} style={inputStyle} maxLength={60} />
                   {locError && <p style={{ color: '#C0392B', fontSize: 13, margin: '-6px 0 12px' }}>{locError}</p>}
                   <button disabled={saving} onClick={() => { if (!venueName.trim()) return; getLocation(loc => registerVenue(loc)); }}
                     style={btnStyle(C.primary)}>
@@ -451,9 +487,9 @@ export default function App() {
                           {productList.map(p => <option key={p}>{p}</option>)}
                         </select>
                       )}
-                      <input value={customProduct} onChange={e => setCustomProduct(e.target.value)}
+                      <input value={customProduct} onChange={e => setCustomProduct(e.target.value.slice(0, 50))}
                         placeholder={productList.length > 0 ? t.customPlaceholder : t.customPlaceholderOnly}
-                        style={inputStyle} />
+                        style={inputStyle} maxLength={50} />
 
                       <label style={labelStyle}>{t.quantityLabel}</label>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 18 }}>
