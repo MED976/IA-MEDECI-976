@@ -632,6 +632,28 @@ export default function App() {
                       )}
                     </div>
 
+                    {/* ── Stats rapides ── */}
+                    {myItems.length > 0 && (() => {
+                      const totalConfs = myItems.reduce((s, it) => s + (confirmCounts[it.id] || 0), 0);
+                      const liveItems  = myItems.filter(it => it.live_url).length;
+                      const photoItems = myItems.filter(it => it.photo_url).length;
+                      return (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+                          {[
+                            { label: lang === 'fr' ? 'Confirmations' : 'Confirmations', value: totalConfs, icon: '👍' },
+                            { label: lang === 'fr' ? 'En direct' : 'Live items',        value: myItems.length, icon: '🔥' },
+                            { label: lang === 'fr' ? 'Preuves' : 'Proofs',              value: liveItems + photoItems, icon: '📸' },
+                          ].map((stat, si) => (
+                            <div key={si} style={{ background: C.card, borderRadius: 16, padding: '14px 10px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                              <div style={{ fontSize: 20, marginBottom: 4 }}>{stat.icon}</div>
+                              <div style={{ fontSize: 22, fontWeight: 900, color: C.text, lineHeight: 1 }}>{stat.value}</div>
+                              <div style={{ fontSize: 10, color: C.muted, marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>{stat.label}</div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+
                     <div style={{ background: C.card, borderRadius: 20, padding: 20, marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
                         <div style={{ width: 40, height: 40, borderRadius: 12, background: C.light, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🔥</div>

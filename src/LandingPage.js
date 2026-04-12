@@ -1,24 +1,22 @@
+import { useState } from 'react';
+import { supabase } from './supabaseClient';
 import T from './translations';
+import './animations.css';
 
 // ── HotNow — Marketing Landing Page ──────────────────────────────────────────
 export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
   const t = T[lang].landing;
+  const types = T[lang].app.businessTypes;
 
-  const TYPES = [
-    { icon: '🥖', label: lang === 'fr' ? 'Boulangerie' : 'Bakery' },
-    { icon: '🍕', label: 'Pizzeria' },
-    { icon: '🥐', label: lang === 'fr' ? 'Pâtisserie' : 'Pastry' },
-    { icon: '🍽️', label: 'Restaurant' },
-    { icon: '☕', label: 'Café' },
-    { icon: '🏪', label: lang === 'fr' ? 'Autre' : 'Other' },
-  ];
+  const [leadEmail, setLeadEmail]   = useState('');
+  const [leadDone, setLeadDone]     = useState(false);
+  const [leadSaving, setLeadSaving] = useState(false);
 
   const C = {
     primary: '#FF5000', black: '#0A0A0A',
     white: '#FFFFFF', offWhite: '#F6F6F6', muted: '#757575',
     card: '#FFFFFF', border: '#EEEEEE',
   };
-
   const grad = 'linear-gradient(135deg,#FF5000,#FF8C42)';
 
   const pill = (text, light = false) => ({
@@ -50,17 +48,31 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
     color: active ? C.black : 'rgba(255,255,255,0.6)',
   });
 
+  const submitLead = async () => {
+    if (!leadEmail.includes('@') || leadSaving) return;
+    setLeadSaving(true);
+    await supabase.from('leads').insert({ email: leadEmail.trim() }).then(() => {});
+    setLeadDone(true);
+    setLeadSaving(false);
+  };
+
+  // ── Diverse mock preview items ─────────────────────────────────────────────
+  const MOCK_ITEMS = [
+    { icon: '🥖', name: lang === 'fr' ? 'Boulangerie Martin' : 'Boulangerie Martin',   product: lang === 'fr' ? 'Baguettes tradition' : 'Traditional baguettes', qty: `🔥 ${lang === 'fr' ? 'Beaucoup' : 'Plenty'}`,              badge: lang === 'fr' ? 'Tout chaud !' : 'Just out!',    bc: '#FF5000', bg: 'linear-gradient(135deg,#FF8C42,#FF5000)' },
+    { icon: '🍱', name: lang === 'fr' ? 'Sushi Sakura' : 'Sushi Sakura',               product: lang === 'fr' ? 'Plateau sushi du midi' : 'Midday sushi tray',    qty: `✨ ${lang === 'fr' ? 'Quelques-uns' : 'A few'}`,    badge: lang === 'fr' ? 'Très frais' : 'Very fresh', bc: '#FF7A00', bg: 'linear-gradient(135deg,#EF9A9A,#880E4F)' },
+    { icon: '🍦', name: lang === 'fr' ? 'Glacier des Alpes' : 'Glacier des Alpes',     product: lang === 'fr' ? 'Sorbet citron maison' : 'Homemade lemon sorbet', qty: `⚡ ${lang === 'fr' ? 'Les derniers !' : 'Last ones!'}`, badge: lang === 'fr' ? 'Frais' : 'Fresh',           bc: '#1A8917', bg: 'linear-gradient(135deg,#80DEEA,#00838F)' },
+  ];
+
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: C.offWhite, overflowX: 'hidden' }}>
 
       {/* ── STICKY NAV ── */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
+      <div style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(10,10,10,0.94)', backdropFilter: 'blur(14px)', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 22 }}>🔥</span>
           <span style={{ fontSize: 18, fontWeight: 800, color: 'white', letterSpacing: '-0.3px' }}>HotNow</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Language toggle */}
           <div style={langToggle}>
             <button onClick={() => setLang('fr')} style={langBtn(lang === 'fr')}>FR</button>
             <button onClick={() => setLang('en')} style={langBtn(lang === 'en')}>EN</button>
@@ -71,18 +83,18 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
 
       {/* ── HERO ── */}
       <div style={{ background: C.black, padding: '60px 24px 56px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.25) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: -80, left: '50%', transform: 'translateX(-50%)', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,80,0,0.28) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-        <div style={pill(t.pill, true)}>{t.pill}</div>
+        <div className="badge-enter" style={pill(t.pill, true)}>{t.pill}</div>
 
-        <h1 style={{ fontSize: 38, fontWeight: 900, color: 'white', margin: '0 0 18px', lineHeight: 1.15, letterSpacing: '-1px' }}>
+        <h1 className="card-enter" style={{ fontSize: 38, fontWeight: 900, color: 'white', margin: '0 0 18px', lineHeight: 1.15, letterSpacing: '-1px' }}>
           {t.heroTitle1}<br />
           <span style={{ background: grad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             {t.heroTitle2}
           </span>
         </h1>
 
-        <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 36px', maxWidth: 340, marginLeft: 'auto', marginRight: 'auto' }}>
+        <p className="card-enter" style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', lineHeight: 1.6, margin: '0 0 36px', maxWidth: 340, marginLeft: 'auto', marginRight: 'auto', animationDelay: '80ms' }}>
           {t.heroSub}
         </p>
 
@@ -92,7 +104,7 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         </div>
 
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 28, background: 'rgba(255,255,255,0.07)', borderRadius: 100, padding: '8px 16px' }}>
-          <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1DB954', display: 'inline-block', boxShadow: '0 0 6px #1DB954' }} />
+          <span className="live-dot" style={{ width: 8, height: 8, borderRadius: '50%', background: '#1DB954', display: 'inline-block', boxShadow: '0 0 6px #1DB954' }} />
           <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>{t.liveBadge}</span>
         </div>
       </div>
@@ -101,24 +113,20 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
       <div style={{ background: C.black, padding: '0 20px 48px' }}>
         <div style={{ background: '#181818', borderRadius: 20, padding: '16px', border: '1px solid rgba(255,255,255,0.07)' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 14 }}>{t.liveLabel}</div>
-          {[
-            { icon: '🥖', name: 'Boulangerie Martin', product: lang === 'fr' ? 'Baguettes' : 'Baguettes', qty: `🔥 ${lang === 'fr' ? 'Beaucoup' : 'Plenty'}`, badge: lang === 'fr' ? 'Tout chaud !' : 'Just out!', badgeColor: '#FF5000', bg: 'linear-gradient(135deg,#FF8C42,#FF5000)' },
-            { icon: '🍕', name: 'Pizzeria Roma',      product: 'Pizza Margherita',                          qty: `✨ ${lang === 'fr' ? 'Quelques-uns' : 'A few'}`,   badge: lang === 'fr' ? 'Très frais' : 'Very fresh', badgeColor: '#FF7A00', bg: 'linear-gradient(135deg,#FF6B6B,#C0392B)' },
-            { icon: '🥐', name: 'Maison Dupont',      product: 'Pain au chocolat',                          qty: `⚡ ${lang === 'fr' ? 'Les derniers !' : 'Last ones!'}`, badge: lang === 'fr' ? 'Frais' : 'Fresh', badgeColor: '#1A8917', bg: 'linear-gradient(135deg,#F8BBD0,#E91E63)' },
-          ].map((v, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
+          {MOCK_ITEMS.map((v, i) => (
+            <div key={i} className="card-enter" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none', animationDelay: `${i * 100}ms` }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: v.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{v.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
                   <span style={{ fontSize: 14, fontWeight: 700, color: 'white' }}>{v.name}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: v.badgeColor }}>{v.badge}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: v.bc }}>{v.badge}</span>
                 </div>
                 <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>{v.product} · {v.qty}</div>
               </div>
             </div>
           ))}
           <div style={{ marginTop: 10, height: 2, background: 'rgba(255,255,255,0.05)', borderRadius: 10 }}>
-            <div style={{ width: '100%', height: '100%', background: 'linear-gradient(90deg,#FF5000,transparent)', borderRadius: 10 }} />
+            <div style={{ width: '75%', height: '100%', background: 'linear-gradient(90deg,#FF5000,transparent)', borderRadius: 10 }} />
           </div>
         </div>
       </div>
@@ -140,7 +148,7 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         <p style={{ fontSize: 15, color: C.muted, margin: '0 0 36px', lineHeight: 1.6 }}>{t.venueSub}</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {t.venueSteps.map((s, i) => (
-            <div key={i} style={{ background: C.card, borderRadius: 18, padding: '20px', display: 'flex', gap: 16, alignItems: 'flex-start', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+            <div key={i} className="card-enter" style={{ background: C.card, borderRadius: 18, padding: '20px', display: 'flex', gap: 16, alignItems: 'flex-start', boxShadow: '0 2px 16px rgba(0,0,0,0.07)', animationDelay: `${i * 80}ms` }}>
               <div style={{ width: 48, height: 48, borderRadius: 14, background: '#FFF0EB', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{s.icon}</div>
               <div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: C.black, marginBottom: 4 }}>
@@ -158,11 +166,11 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         <div style={pill(t.typesPill, true)}>{t.typesPill}</div>
         <h2 style={{ fontSize: 26, fontWeight: 900, color: 'white', margin: '0 0 8px', letterSpacing: '-0.5px' }}>{t.typesTitle}</h2>
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 28px', lineHeight: 1.6 }}>{t.typesSub}</p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-          {TYPES.map((type, i) => (
-            <div key={i} style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '18px 8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 30, marginBottom: 8 }}>{type.icon}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{type.label}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {types.filter(tp => tp.id !== 'other').map((tp, i) => (
+            <div key={tp.id} className="card-enter" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, padding: '16px 8px', textAlign: 'center', animationDelay: `${i * 40}ms` }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>{tp.icon}</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.75)', lineHeight: 1.3 }}>{tp.label}</div>
             </div>
           ))}
         </div>
@@ -195,12 +203,12 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         <h2 style={{ fontSize: 28, fontWeight: 900, color: C.black, margin: '0 0 28px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{t.testimonialsTitle}</h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {t.testimonials.map((item, i) => (
-            <div key={i} style={{ background: C.card, borderRadius: 18, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize: 24, color: C.primary, marginBottom: 12, lineHeight: 1 }}>"</div>
+            <div key={i} className="card-enter" style={{ background: C.card, borderRadius: 18, padding: '20px', boxShadow: '0 2px 16px rgba(0,0,0,0.07)', animationDelay: `${i * 70}ms` }}>
+              <div style={{ fontSize: 22, color: C.primary, marginBottom: 10, lineHeight: 1 }}>"</div>
               <p style={{ fontSize: 15, color: C.black, lineHeight: 1.6, margin: '0 0 16px', fontStyle: 'italic' }}>{item.quote}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'linear-gradient(135deg,#FF8C42,#FF5000)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'white', fontWeight: 700 }}>
-                  {item.name[0]}
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: grad, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
+                  {item.icon}
                 </div>
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.black }}>{item.name}</div>
@@ -212,8 +220,33 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
         </div>
       </div>
 
+      {/* ── LEAD CAPTURE ── */}
+      <div style={{ background: C.black, padding: '52px 20px', textAlign: 'center' }}>
+        <div style={pill(t.leadPill, true)}>{t.leadPill}</div>
+        <h2 style={{ fontSize: 24, fontWeight: 900, color: 'white', margin: '0 0 8px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{t.leadTitle}</h2>
+        <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 24px', lineHeight: 1.6 }}>{t.leadSub}</p>
+        {leadDone
+          ? <div style={{ background: 'rgba(29,185,84,0.15)', border: '1px solid rgba(29,185,84,0.3)', borderRadius: 14, padding: '16px', fontSize: 15, fontWeight: 600, color: '#1DB954' }}>{t.leadDone}</div>
+          : (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                value={leadEmail}
+                onChange={e => setLeadEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && submitLead()}
+                placeholder={t.leadPlaceholder}
+                type="email"
+                style={{ flex: 1, padding: '14px 16px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.08)', color: 'white', fontSize: 15, fontFamily: 'inherit', outline: 'none' }}
+              />
+              <button onClick={submitLead} disabled={leadSaving} style={{ padding: '14px 18px', borderRadius: 12, border: 'none', background: grad, color: 'white', fontSize: 14, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(255,80,0,0.3)' }}>
+                {leadSaving ? '…' : t.leadBtn}
+              </button>
+            </div>
+          )
+        }
+      </div>
+
       {/* ── PRICING ── */}
-      <div style={{ background: C.black, padding: '52px 20px' }}>
+      <div style={{ background: '#060606', padding: '52px 20px' }}>
         <div style={pill(t.pricingPill, true)}>{t.pricingPill}</div>
         <h2 style={{ fontSize: 28, fontWeight: 900, color: 'white', margin: '0 0 8px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>{t.pricingTitle}</h2>
         <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', margin: '0 0 32px', lineHeight: 1.6 }}>{t.pricingSub}</p>
