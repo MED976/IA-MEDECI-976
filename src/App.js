@@ -132,6 +132,12 @@ export default function App() {
   const [freshnessFilter, setFreshnessFilter] = useState('all');
   const [selectedVenueId, setSelectedVenueId] = useState(null);
   const [shareCopied, setShareCopied]      = useState(false);
+  const [sortMode, setSortMode]            = useState('distance');  // 'distance' | 'freshness' | 'popular'
+  const [onboarded, setOnboarded]          = useState(() => !!localStorage.getItem('hn_onboarded'));
+  const [onboardSlide, setOnboardSlide]    = useState(0);
+  const [isOpen, setIsOpen]               = useState(() => myVenue?.is_open !== false);
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const [touchStartY, setTouchStartY]      = useState(null);
 
   const t = T[lang].app;
 
@@ -284,6 +290,21 @@ export default function App() {
   const removeItem   = (id) => supabase.from('items').delete().eq('id', id);
   const toggleFav    = (id) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
 
+  const toggleOpen = async () => {
+    const next = !isOpen;
+    setIsOpen(next);
+    const updated = { ...myVenue, is_open: next };
+    setMyVenue(updated);
+    await supabase.from('venues').update({ is_open: next }).eq('id', myVenue.id);
+  };
+
+  const pullToRefresh = (e) => {
+    if (e.touches[0].clientY - (touchStartY || 0) > 70 && !pullRefreshing) {
+      setPullRefreshing(true);
+      loadData().then(() => setTimeout(() => setPullRefreshing(false), 600));
+    }
+  };
+
   const confirmItem = async (itemId) => {
     if (myConfirmations.includes(itemId)) return;
     const updated = [...myConfirmations, itemId];
@@ -316,8 +337,17 @@ export default function App() {
       if (freshnessFilter === 'fresh')  return mins < 60;
       return true;
     })
-    // Pro venues float up at equal distance (±200m)
+    // Sort by chosen mode; Pro floats up at equal distance
     .sort((a, b) => {
+      if (sortMode === 'freshness') {
+        return new Date(b.hotItems[0].at) - new Date(a.hotItems[0].at);
+      }
+      if (sortMode === 'popular') {
+        const ca = a.hotItems.reduce((s, i) => s + (confirmCounts[i.id] || 0), 0);
+        const cb = b.hotItems.reduce((s, i) => s + (confirmCounts[i.id] || 0), 0);
+        return cb - ca;
+      }
+      // default: distance, pro first at equal distance
       const da = a.distance ?? 9999, db = b.distance ?? 9999;
       if (Math.abs(da - db) < 0.2 && a.plan !== b.plan) return a.plan === 'pro' ? -1 : 1;
       return da - db;
@@ -465,6 +495,44 @@ export default function App() {
     );
   };
 
+  // ── Onboarding slides ────────────────────────────────────────────────────
+  const SLIDES = lang === 'fr' ? [
+    { emoji: '🔥', title: 'Tout frais, en direct', sub: 'Boulangers, sushimen, glaciers… annoncent leurs produits dès qu\'ils sont prêts. Vous le voyez instantanément.' },
+    { emoji: '❤️', title: 'Sauvegardez vos favoris', sub: 'Appuyez sur ❤️ pour sauvegarder un établissement. Retrouvez-le à tout moment dans l\'onglet Favoris.' },
+    { emoji: '🏪', title: 'Vous êtes commerçant ?', sub: 'Inscrivez votre établissement en 30 secondes et annoncez vos produits frais à vos clients à proximité.' },
+  ] : [
+    { emoji: '🔥', title: 'Fresh products, live', sub: 'Bakers, sushi chefs, ice cream makers… announce their products the moment they\'re ready. You see it instantly.' },
+    { emoji: '❤️', title: 'Save your favourites', sub: 'Tap ❤️ to save a venue. Find it anytime in the Favorites tab.' },
+    { emoji: '🏪', title: 'Own a food venue?', sub: 'Register in 30 seconds and announce your fresh products to hungry customers nearby.' },
+  ];
+
+  const finishOnboarding = () => { localStorage.setItem('hn_onboarded', '1'); setOnboarded(true); };
+
+  if (view === 'app' && !onboarded) {
+    const slide = SLIDES[onboardSlide];
+    const isLast = onboardSlide === SLIDES.length - 1;
+    return (
+      <div style={{ fontFamily: "'Inter', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: '#0A0A0A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 28px', textAlign: 'center' }}>
+        <div className="card-enter" key={onboardSlide} style={{ width: '100%' }}>
+          <div style={{ fontSize: 88, marginBottom: 28, filter: 'drop-shadow(0 8px 24px rgba(255,80,0,0.3))' }}>{slide.emoji}</div>
+          <h1 style={{ fontSize: 30, fontWeight: 900, color: 'white', margin: '0 0 14px', letterSpacing: '-0.5px', lineHeight: 1.15 }}>{slide.title}</h1>
+          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.55)', lineHeight: 1.65, margin: '0 0 48px' }}>{slide.sub}</p>
+        </div>
+        {/* Dots */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 32 }}>
+          {SLIDES.map((_, i) => <span key={i} style={{ width: i === onboardSlide ? 22 : 7, height: 7, borderRadius: 100, background: i === onboardSlide ? '#FF5000' : 'rgba(255,255,255,0.2)', transition: 'all 0.3s' }} />)}
+        </div>
+        <button onClick={() => isLast ? finishOnboarding() : setOnboardSlide(s => s + 1)}
+          style={{ display: 'block', width: '100%', padding: '17px', borderRadius: 16, border: 'none', background: 'linear-gradient(135deg,#FF5000,#FF8C42)', color: 'white', fontSize: 17, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 6px 28px rgba(255,80,0,0.4)' }}>
+          {isLast ? (lang === 'fr' ? "C'est parti ! 🚀" : "Let's go! 🚀") : (lang === 'fr' ? 'Suivant →' : 'Next →')}
+        </button>
+        <button onClick={finishOnboarding} style={{ marginTop: 14, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>
+          {lang === 'fr' ? 'Passer' : 'Skip'}
+        </button>
+      </div>
+    );
+  }
+
   // ── Layout ────────────────────────────────────────────────────────────────
   if (view === 'landing') {
     return <LandingPage onExplore={() => goToApp('explore')} onRegister={() => goToApp('venue')} lang={lang} setLang={setLang} />;
@@ -475,7 +543,15 @@ export default function App() {
       {showUpgrade && <UpgradeModal />}
       {selectedVenueId && <VenueDetailModal />}
 
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}
+        onTouchStart={e => setTouchStartY(e.touches[0].clientY)}
+        onTouchMove={pullToRefresh}>
+        {/* Pull-to-refresh indicator */}
+        {pullRefreshing && (
+          <div style={{ textAlign: 'center', padding: '10px 0', background: C.black, color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 600 }}>
+            ↻ {lang === 'fr' ? 'Actualisation…' : 'Refreshing…'}
+          </div>
+        )}
 
         {/* ══ EXPLORE / FAVORITES ══ */}
         {(tab === 'explore' || tab === 'favorites') && (
@@ -499,7 +575,7 @@ export default function App() {
                   <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 20, padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#1DB954', display: 'inline-block' }} />
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                      {loading ? '…' : items.length} {t.live}
+                      {loading ? '…' : `${items.length} ${t.live} · ${venues.filter(v => items.some(i => i.venue_id === v.id)).length} ${lang === 'fr' ? 'commerces' : 'venues'}`}
                     </span>
                   </div>
                 </div>
@@ -539,25 +615,35 @@ export default function App() {
               </div>
             )}
 
-            {/* Freshness filter chips */}
+            {/* Freshness + Sort filters */}
             {tab === 'explore' && (
-              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 16px 14px', scrollbarWidth: 'none' }}>
-                {[
-                  { id: 'all',    icon: '⚡', label: lang === 'fr' ? 'Tous'       : 'All'        },
-                  { id: 'hot',    icon: '🔥', label: lang === 'fr' ? 'Tout chaud' : 'Just out'   },
-                  { id: 'vfresh', icon: '🧡', label: lang === 'fr' ? 'Très frais' : 'Very fresh' },
-                  { id: 'fresh',  icon: '🟢', label: lang === 'fr' ? 'Frais'      : 'Fresh'      },
-                ].map(f => (
-                  <button key={f.id} onClick={() => setFreshnessFilter(f.id)} style={{
-                    padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700,
-                    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: 'none',
-                    background: freshnessFilter === f.id ? C.primary : C.card,
-                    color: freshnessFilter === f.id ? 'white' : C.muted,
-                    boxShadow: freshnessFilter === f.id ? '0 2px 10px rgba(255,80,0,0.3)' : '0 1px 4px rgba(0,0,0,0.07)',
-                  }}>
-                    {f.icon} {f.label}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: 16, padding: '10px 16px 14px', borderBottom: `1px solid ${C.border}` }}>
+                {/* Freshness */}
+                <div style={{ display: 'flex', gap: 5, overflowX: 'auto', flex: 1, scrollbarWidth: 'none' }}>
+                  {[
+                    { id: 'all',    icon: '⚡', label: lang === 'fr' ? 'Tous'       : 'All'        },
+                    { id: 'hot',    icon: '🔥', label: lang === 'fr' ? 'Tout chaud' : 'Just out'   },
+                    { id: 'vfresh', icon: '🧡', label: lang === 'fr' ? 'Très frais' : 'Very fresh' },
+                    { id: 'fresh',  icon: '🟢', label: lang === 'fr' ? 'Frais'      : 'Fresh'      },
+                  ].map(f => (
+                    <button key={f.id} onClick={() => setFreshnessFilter(f.id)} style={{
+                      padding: '5px 11px', borderRadius: 100, fontSize: 11, fontWeight: 700,
+                      fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: 'none',
+                      background: freshnessFilter === f.id ? C.primary : C.card,
+                      color: freshnessFilter === f.id ? 'white' : C.muted,
+                      boxShadow: freshnessFilter === f.id ? '0 2px 8px rgba(255,80,0,0.28)' : '0 1px 4px rgba(0,0,0,0.07)',
+                    }}>
+                      {f.icon} {f.label}
+                    </button>
+                  ))}
+                </div>
+                {/* Sort */}
+                <select value={sortMode} onChange={e => setSortMode(e.target.value)}
+                  style={{ padding: '5px 10px', borderRadius: 100, fontSize: 11, fontWeight: 700, border: '1px solid ' + C.border, background: C.card, color: C.text, fontFamily: 'inherit', cursor: 'pointer', flexShrink: 0, appearance: 'none' }}>
+                  <option value="distance">{lang === 'fr' ? '📍 Distance' : '📍 Distance'}</option>
+                  <option value="freshness">{lang === 'fr' ? '🔥 Fraîcheur' : '🔥 Freshness'}</option>
+                  <option value="popular">{lang === 'fr' ? '👍 Populaire' : '👍 Popular'}</option>
+                </select>
               </div>
             )}
 
@@ -613,8 +699,20 @@ export default function App() {
                       {!topItem.photo_url && imgUrl && (
                         <span style={{ fontSize: 52, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))', position: 'absolute' }}>{v.icon}</span>
                       )}
-                      <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 100, padding: '4px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{f.label}</span>
+                      <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 6 }}>
+                        <div style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 100, padding: '4px 12px' }}>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{f.label}</span>
+                        </div>
+                        {mins < 5 && (
+                          <div className="badge-enter" style={{ background: '#FF5000', borderRadius: 100, padding: '4px 10px' }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>NOUVEAU</span>
+                          </div>
+                        )}
+                        {v.is_open === false && (
+                          <div style={{ background: 'rgba(0,0,0,0.7)', borderRadius: 100, padding: '4px 10px' }}>
+                            <span style={{ fontSize: 11, fontWeight: 800, color: '#FF6B6B' }}>{lang === 'fr' ? 'Fermé' : 'Closed'}</span>
+                          </div>
+                        )}
                       </div>
                       {topItem.live_url && (() => {
                         const lp = detectLivePlatform(topItem.live_url);
@@ -783,6 +881,19 @@ export default function App() {
                           ⭐ Pro
                         </button>
                       )}
+                    </div>
+
+                    {/* ── Open / Closed toggle ── */}
+                    <div style={{ background: C.card, borderRadius: 16, padding: '14px 18px', marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: C.muted, marginBottom: 2 }}>{lang === 'fr' ? 'Statut' : 'Status'}</div>
+                        <div style={{ fontSize: 15, fontWeight: 800, color: isOpen ? '#1A8917' : '#C0392B' }}>
+                          {isOpen ? `🟢 ${lang === 'fr' ? 'Ouvert — clients visibles' : 'Open — visible to customers'}` : `🔴 ${lang === 'fr' ? 'Fermé — masqué' : 'Closed — hidden'}`}
+                        </div>
+                      </div>
+                      <button onClick={toggleOpen} style={{ border: 'none', borderRadius: 10, padding: '8px 16px', fontFamily: 'inherit', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: isOpen ? '#FDECEA' : '#E8F5E9', color: isOpen ? '#C0392B' : '#1A8917' }}>
+                        {isOpen ? (lang === 'fr' ? 'Fermer' : 'Close') : (lang === 'fr' ? 'Ouvrir' : 'Open')}
+                      </button>
                     </div>
 
                     {/* ── Stats rapides ── */}
