@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from './supabaseClient';
 import LandingPage from './LandingPage';
 import T from './translations';
+import './animations.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function getDistance(lat1, lon1, lat2, lon2) {
@@ -24,13 +25,65 @@ function freshnessInfo(dateStr, labels) {
 const FRESHNESS_LIMIT_MS = 2 * 60 * 60 * 1000;
 
 const PRODUCTS_BY_TYPE = {
-  bakery:     ['Baguette','Croissant','Pain au chocolat','Brioche','Ficelle','Pain de campagne','Fougasse','Chausson aux pommes'],
-  pizzeria:   ['Pizza Margherita','Pizza 4 formaggi','Pizza Pepperoni','Pizza Reine','Calzone','Focaccia','Pizza du jour'],
-  pastry:     ['Éclair','Tarte','Mille-feuille','Paris-Brest','Macaron','Kouign-amann','Saint-Honoré'],
-  restaurant: ['Plat du jour','Pain maison','Quiche','Lasagne','Gratin','Tourte'],
-  cafe:       ['Muffin','Scone','Banana bread','Cookie','Brownie','Croissant'],
-  other:      [],
+  bakery:      ['Baguette tradition','Croissant','Pain au chocolat','Brioche','Ficelle','Pain de campagne','Fougasse','Chausson aux pommes','Pain aux céréales'],
+  pizzeria:    ['Pizza Margherita','Pizza 4 formaggi','Pizza Pepperoni','Pizza Reine','Calzone','Focaccia','Pizza du jour'],
+  pastry:      ['Éclair chocolat','Tarte aux fraises','Mille-feuille','Paris-Brest','Macaron','Kouign-amann','Saint-Honoré','Choux à la crème'],
+  restaurant:  ['Plat du jour','Pain maison','Quiche','Lasagne','Gratin','Tourte','Soupe du jour'],
+  cafe:        ['Muffin','Scone','Banana bread','Cookie','Brownie','Croissant','Cake du jour'],
+  fromagerie:  ['Comté affiné','Camembert AOP','Brie de Meaux','Roquefort','Chèvre frais','Morbier','Raclette','Époisses'],
+  boucherie:   ['Rôti du jour','Entrecôte','Merguez fraîches','Saucisses maison','Terrine maison','Poulet fermier','Côtelettes'],
+  traiteur:    ['Plat du jour','Quiche fraîche','Taboulé maison','Gratin du jour','Pâté en croûte','Salade composée','Lasagnes'],
+  glacier:     ['Glace vanille','Sorbet citron','Sundae chocolat','Glace framboise','Coupe 3 boules','Cornet artisanal'],
+  foodtruck:   ['Burger du jour','Hot dog','Tacos','Frites maison','Wrap','Bowl du jour','Sandwich grillé'],
+  sushi:       ['Plateau sushi','Maki California','Temaki saumon','Chirashi','Gyoza','Ramen du jour','Poké bowl'],
+  chocolatier: ['Bonbons chocolat','Tablette du jour','Truffes','Mendiant','Rocher','Pralinés','Ganache fraîche'],
+  rotisserie:  ['Poulet rôti','Demi-poulet','Rôti de porc','Agneau rôti','Pommes sarladaises','Magret de canard'],
+  creperie:    ['Crêpe beurre-sucre','Crêpe complète','Galette jambon-fromage','Crêpe Nutella','Galette champignons','Crêpe flambée'],
+  other:       [],
 };
+
+// ── Venue name autocomplete suggestions ───────────────────────────────────────
+const VENUE_SUGGESTIONS = {
+  bakery:      ['Boulangerie du Coin','Boulangerie Martin','Le Pain Doré','Au Bon Pain','La Mie Enchantée','Le Fournil du Village','Boulangerie Artisanale','Le Grenier à Pain','Boulangerie de la Mairie'],
+  pizzeria:    ['Pizzeria Roma','La Bella Italia','Pizza Napoli','Pizzeria del Corso','La Piazza','Pizzeria Calabrese','L\'Olive et le Four','Pizza di Napoli'],
+  pastry:      ['Pâtisserie du Centre','Maison Martin','Les Délices Sucrés','Pâtisserie Artisanale','La Tarte et la Douceur','Au Palais Sucré','La Pâtisserie'],
+  restaurant:  ['Le Bistrot du Coin','Chez Marie','Le Petit Chef','La Maison','Restaurant du Marché','Au Fil des Saisons','Le Terroir'],
+  cafe:        ['Café de la Place','Le Petit Café','Café des Artistes','Le Zinc','Café Central','Le Comptoir','Café du Commerce'],
+  fromagerie:  ['La Fromagerie du Marché','Maison du Fromage','L\'Affineur','Fromagerie Artisanale','Au Plateau de Fromages','La Cave à Fromages'],
+  boucherie:   ['Boucherie du Village','Maison Martin','La Boucherie Artisanale','Au Bœuf Saignant','Boucherie-Charcuterie','La Bonne Viande'],
+  traiteur:    ['Traiteur Dupont','La Table du Traiteur','Les Saveurs du Marché','Épicerie Fine','Traiteur de Qualité','Le Délice Traiteur'],
+  glacier:     ['La Crème Glacée','Glacier Artisanal','Le Petit Gelato','Glacerie du Soleil','Les Glaces de Marie','Gelato di Roma'],
+  foodtruck:   ['Le Truck Gourmand','Street Food Express','Le Camion du Chef','Food Truck du Marché','Le Burger Mobile'],
+  sushi:       ['Sushi Express','Tokyo Sushi','Sakura Restaurant','Sushi Bar','Japan Food','Wasabi Sushi','Edo Sushi'],
+  chocolatier: ['Chocolaterie Artisanale','Maison du Chocolat','Les Délices Cacaotés','La Truffe de Chocolat','Cacao & Co'],
+  rotisserie:  ['Rôtisserie du Marché','Le Poulet Doré','Chez le Rôtisseur','La Broche d\'Or','Rôtisserie Artisanale'],
+  creperie:    ['Crêperie Bretonne','Les Crêpes de Marie','La Galette du Coin','Crêperie Artisanale','Breiz Crêperie'],
+  other:       [],
+};
+
+// ── Type background images (Unsplash, free-to-use) ────────────────────────────
+const TYPE_IMAGES = {
+  bakery:      'photo-1509440159596-0249088772ff',
+  pizzeria:    'photo-1513104890138-7c749659a591',
+  pastry:      'photo-1558961363-fa8fdf82db35',
+  restaurant:  'photo-1414235077428-338989a2e8c0',
+  cafe:        'photo-1495474472287-4d71bcdd2085',
+  fromagerie:  'photo-1452195100486-9cc7a74d9176',
+  boucherie:   'photo-1529692236671-f1f6cf9683ba',
+  traiteur:    'photo-1547592166-23ac45744acd',
+  glacier:     'photo-1501443762994-82bd5dace89a',
+  foodtruck:   'photo-1565123409695-7b5ef63a2efb',
+  sushi:       'photo-1579584425555-c3ce17fd4351',
+  chocolatier: 'photo-1511381939415-e44015466834',
+  rotisserie:  'photo-1598103442097-8b74394b95c3',
+  creperie:    'photo-1519676867240-f03562e64548',
+};
+
+function typeImageUrl(type) {
+  const id = TYPE_IMAGES[type];
+  if (!id) return null;
+  return `https://images.unsplash.com/${id}?auto=format&fit=crop&w=800&q=65`;
+}
 
 const C = {
   bg: '#F6F6F6', card: '#FFFFFF', black: '#000000',
@@ -268,7 +321,7 @@ export default function App() {
   const UpgradeModal = () => (
     <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
       onClick={() => setShowUpgrade(false)}>
-      <div style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '32px 24px 40px', width: '100%', maxWidth: 480 }}
+      <div className="modal-enter" style={{ background: 'white', borderRadius: '24px 24px 0 0', padding: '32px 24px 40px', width: '100%', maxWidth: 480 }}
         onClick={e => e.stopPropagation()}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>⭐</div>
@@ -356,7 +409,15 @@ export default function App() {
             )}
 
             <div style={{ padding: '0 16px' }}>
-              {loading && <div style={{ textAlign: 'center', padding: '60px 0', color: C.muted, fontSize: 14 }}>{t.loading}</div>}
+              {loading && [0,1,2].map(i => (
+                <div key={i} style={{ borderRadius: 20, marginBottom: 16, overflow: 'hidden' }}>
+                  <div className="shimmer-bg" style={{ height: 160, borderRadius: '20px 20px 0 0' }} />
+                  <div style={{ background: 'white', padding: '14px 16px 18px', borderRadius: '0 0 20px 20px' }}>
+                    <div className="shimmer-bg" style={{ height: 16, borderRadius: 8, width: '60%', marginBottom: 10 }} />
+                    <div className="shimmer-bg" style={{ height: 12, borderRadius: 8, width: '40%' }} />
+                  </div>
+                </div>
+              ))}
               {locError && (
                 <div style={{ background: '#FDECEA', borderRadius: 14, padding: 16, marginBottom: 12 }}>
                   <p style={{ color: '#C0392B', margin: '0 0 10px', fontSize: 14 }}>{locError}</p>
@@ -381,13 +442,24 @@ export default function App() {
                 const f = freshnessInfo(topItem.at, t.freshnessLabels);
                 const q = t.quantities.find(q => q.id === topItem.quantity);
                 const mins = Math.floor((Date.now() - new Date(topItem.at)) / 60000);
+                const imgUrl = typeImageUrl(v.type);
                 return (
-                  <div key={v.id} style={{ background: C.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-                    <div style={{ background: topItem.photo_url ? 'none' : gradientByType(v.type), height: 140, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                      {topItem.photo_url
-                        ? <img src={topItem.photo_url} alt={topItem.product} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                        : <span style={{ fontSize: 64, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>{v.icon}</span>
-                      }
+                  <div key={v.id} className="card-enter" style={{ background: C.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', animationDelay: `${idx * 60}ms` }}>
+                    <div style={{
+                      height: 160, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
+                      background: topItem.photo_url
+                        ? `url(${topItem.photo_url}) center/cover`
+                        : imgUrl
+                          ? `linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.45) 100%), url(${imgUrl}) center/cover`
+                          : gradientByType(v.type),
+                      backgroundColor: gradientByType(v.type).includes('gradient') ? undefined : gradientByType(v.type),
+                    }}>
+                      {!topItem.photo_url && !imgUrl && (
+                        <span style={{ fontSize: 64, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.3))' }}>{v.icon}</span>
+                      )}
+                      {!topItem.photo_url && imgUrl && (
+                        <span style={{ fontSize: 52, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.5))', position: 'absolute' }}>{v.icon}</span>
+                      )}
                       <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 100, padding: '4px 12px' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{f.label}</span>
                       </div>
@@ -397,7 +469,7 @@ export default function App() {
                           <a href={topItem.live_url} target="_blank" rel="noopener noreferrer"
                             onClick={e => e.stopPropagation()}
                             style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: '#E53935', borderRadius: 100, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, textDecoration: 'none', zIndex: 5 }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'white', animation: 'pulse 1.2s ease-in-out infinite', display: 'inline-block' }} />
+                            <span className="live-dot" style={{ width: 7, height: 7, borderRadius: '50%', background: 'white', display: 'inline-block' }} />
                             <span style={{ fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>🔴 LIVE · {lp.name}</span>
                           </a>
                         );
@@ -518,7 +590,14 @@ export default function App() {
                   </div>
                   <label style={labelStyle}>{t.venueNameLabel}</label>
                   <input value={venueName} onChange={e => setVenueName(e.target.value.slice(0, 60))}
-                    placeholder={t.venueNamePlaceholder} style={inputStyle} maxLength={60} />
+                    placeholder={t.venueNamePlaceholder} style={inputStyle} maxLength={60}
+                    list="venue-suggestions" autoComplete="off" />
+                  <datalist id="venue-suggestions">
+                    {(VENUE_SUGGESTIONS[venueType] || [])
+                      .filter(s => venueName.length < 3 || s.toLowerCase().includes(venueName.toLowerCase()))
+                      .map(s => <option key={s} value={s} />)
+                    }
+                  </datalist>
                   {locError && <p style={{ color: '#C0392B', fontSize: 13, margin: '-6px 0 12px' }}>{locError}</p>}
                   <button disabled={saving} onClick={() => { if (!venueName.trim()) return; getLocation(loc => registerVenue(loc)); }}
                     style={btnStyle(C.primary)}>
@@ -705,12 +784,21 @@ export default function App() {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function gradientByType(type) {
   const g = {
-    bakery:     'linear-gradient(135deg,#FF8C42,#FF5000)',
-    pizzeria:   'linear-gradient(135deg,#FF6B6B,#C0392B)',
-    pastry:     'linear-gradient(135deg,#F8BBD0,#E91E63)',
-    restaurant: 'linear-gradient(135deg,#81C784,#2E7D32)',
-    cafe:       'linear-gradient(135deg,#BCAAA4,#4E342E)',
-    other:      'linear-gradient(135deg,#B0BEC5,#546E7A)',
+    bakery:      'linear-gradient(135deg,#FF8C42,#FF5000)',
+    pizzeria:    'linear-gradient(135deg,#FF6B6B,#C0392B)',
+    pastry:      'linear-gradient(135deg,#F48FB1,#E91E63)',
+    restaurant:  'linear-gradient(135deg,#81C784,#2E7D32)',
+    cafe:        'linear-gradient(135deg,#A1887F,#4E342E)',
+    fromagerie:  'linear-gradient(135deg,#FFE082,#F9A825)',
+    boucherie:   'linear-gradient(135deg,#EF9A9A,#B71C1C)',
+    traiteur:    'linear-gradient(135deg,#A5D6A7,#1B5E20)',
+    glacier:     'linear-gradient(135deg,#80DEEA,#00838F)',
+    foodtruck:   'linear-gradient(135deg,#FFCC80,#E65100)',
+    sushi:       'linear-gradient(135deg,#EF9A9A,#880E4F)',
+    chocolatier: 'linear-gradient(135deg,#BCAAA4,#3E2723)',
+    rotisserie:  'linear-gradient(135deg,#FFAB91,#BF360C)',
+    creperie:    'linear-gradient(135deg,#F0F4C3,#827717)',
+    other:       'linear-gradient(135deg,#B0BEC5,#546E7A)',
   };
   return g[type] || g.other;
 }
