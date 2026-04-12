@@ -69,6 +69,12 @@ export default function App() {
   const [showUpgrade, setShowUpgrade]      = useState(false);
   const [proJustActivated, setProJustActivated] = useState(false);
   const [dailyCount, setDailyCount]        = useState(getDailyCount);
+  const [liveUrl, setLiveUrl]              = useState('');
+  const [photoFile, setPhotoFile]          = useState(null);
+  const [photoPreview, setPhotoPreview]    = useState('');
+  const [confirmCounts, setConfirmCounts]  = useState({});
+  const [myConfirmations, setMyConfirmations] = useState(() => JSON.parse(localStorage.getItem('hn_confirmed') || '[]'));
+  const [gpsWarning, setGpsWarning]        = useState(false);
 
   const t = T[lang].app;
 
@@ -105,7 +111,18 @@ export default function App() {
       supabase.from('items').select('*').gte('at', cutoff).order('at', { ascending: false }),
     ]);
     if (v) setVenues(v);
-    if (i) setItems(i);
+    if (i) {
+      setItems(i);
+      if (i.length > 0) {
+        const ids = i.map(it => it.id);
+        const { data: confs } = await supabase.from('confirmations').select('item_id').in('item_id', ids);
+        if (confs) {
+          const counts = {};
+          confs.forEach(c => { counts[c.item_id] = (counts[c.item_id] || 0) + 1; });
+          setConfirmCounts(counts);
+        }
+      }
+    }
     setLoading(false);
   }, []);
 
@@ -116,6 +133,7 @@ export default function App() {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' },  p => setItems(prev => prev.filter(i => i.id !== p.old.id)))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'venues' }, p => setVenues(prev => [...prev, p.new]))
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'venues' }, p => setVenues(prev => prev.map(v => v.id === p.new.id ? { ...v, ...p.new } : v)))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'confirmations' }, p => setConfirmCounts(prev => ({ ...prev, [p.new.item_id]: (prev[p.new.item_id] || 0) + 1 })))
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [loadData]);
@@ -152,6 +170,14 @@ export default function App() {
   const announce = async () => {
     const name = customProduct.trim() || product;
     if (!name) return;
+
+    // GPS verification — warn if > 500m from venue
+    if (userLoc && myVenue) {
+      const dist = getDistance(userLoc.lat, userLoc.lng, myVenue.lat, myVenue.lng);
+      if (dist > 0.5) setGpsWarning(true);
+      else setGpsWarning(false);
+    }
+
     // Vérification côté serveur (non contournable via localStorage)
     if (!isPro) {
       const todayStart = new Date(); todayStart.setHours(0,0,0,0);
@@ -163,11 +189,25 @@ export default function App() {
     }
     setSaving(true);
     try {
+      // Photo upload
+      let photo_url = null;
+      if (photoFile) {
+        const ext = photoFile.name.split('.').pop();
+        const fileName = `${myVenue.id}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('fournees').upload(fileName, photoFile, { cacheControl: '3600', upsert: false });
+        if (!upErr) {
+          const { data: pubData } = supabase.storage.from('fournees').getPublicUrl(fileName);
+          photo_url = pubData.publicUrl;
+        }
+      }
+
       const { error } = await supabase.from('items').insert({
-        id: crypto.randomUUID(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString()
+        id: crypto.randomUUID(), venue_id: myVenue.id, product: name, quantity, at: new Date().toISOString(),
+        live_url: liveUrl.trim() || null,
+        photo_url,
       });
       if (error) throw error;
-      setCustomProduct('');
+      setCustomProduct(''); setLiveUrl(''); setPhotoFile(null); setPhotoPreview('');
       if (!isPro) { incDailyCount(); setDailyCount(getDailyCount()); }
       setJustDone(true);
       setTimeout(() => setJustDone(false), 4000);
@@ -179,6 +219,14 @@ export default function App() {
 
   const removeItem   = (id) => supabase.from('items').delete().eq('id', id);
   const toggleFav    = (id) => setFavorites(prev => prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]);
+
+  const confirmItem = async (itemId) => {
+    if (myConfirmations.includes(itemId)) return;
+    const updated = [...myConfirmations, itemId];
+    setMyConfirmations(updated);
+    localStorage.setItem('hn_confirmed', JSON.stringify(updated));
+    await supabase.from('confirmations').insert({ item_id: itemId });
+  };
 
   // ── Enriched venues ───────────────────────────────────────────────────────
   const enriched = venues
@@ -335,11 +383,25 @@ export default function App() {
                 const mins = Math.floor((Date.now() - new Date(topItem.at)) / 60000);
                 return (
                   <div key={v.id} style={{ background: C.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-                    <div style={{ background: gradientByType(v.type), height: 140, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 64, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>{v.icon}</span>
+                    <div style={{ background: topItem.photo_url ? 'none' : gradientByType(v.type), height: 140, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                      {topItem.photo_url
+                        ? <img src={topItem.photo_url} alt={topItem.product} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <span style={{ fontSize: 64, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.2))' }}>{v.icon}</span>
+                      }
                       <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', borderRadius: 100, padding: '4px 12px' }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{f.label}</span>
                       </div>
+                      {topItem.live_url && (() => {
+                        const lp = detectLivePlatform(topItem.live_url);
+                        return (
+                          <a href={topItem.live_url} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', background: '#E53935', borderRadius: 100, padding: '4px 12px', display: 'flex', alignItems: 'center', gap: 5, textDecoration: 'none', zIndex: 5 }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'white', animation: 'pulse 1.2s ease-in-out infinite', display: 'inline-block' }} />
+                            <span style={{ fontSize: 11, fontWeight: 800, color: 'white', letterSpacing: '0.5px' }}>🔴 LIVE · {lp.name}</span>
+                          </a>
+                        );
+                      })()}
                       <button onClick={() => toggleFav(v.id)} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {isFaved ? '❤️' : '🤍'}
                       </button>
@@ -380,7 +442,7 @@ export default function App() {
                           </div>
                         )}
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
                         {v.hotItems.map(it => {
                           const iq = t.quantities.find(q => q.id === it.quantity);
                           return (
@@ -391,6 +453,22 @@ export default function App() {
                           );
                         })}
                       </div>
+                      {/* Confirm button */}
+                      <button onClick={() => confirmItem(topItem.id)} style={{
+                        background: myConfirmations.includes(topItem.id) ? '#E8F5E9' : C.bg,
+                        border: 'none', borderRadius: 100, padding: '7px 14px',
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        cursor: myConfirmations.includes(topItem.id) ? 'default' : 'pointer',
+                        fontFamily: 'inherit',
+                      }}>
+                        <span style={{ fontSize: 14 }}>{myConfirmations.includes(topItem.id) ? '✅' : '👍'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: myConfirmations.includes(topItem.id) ? '#1A8917' : C.muted }}>
+                          {myConfirmations.includes(topItem.id)
+                            ? (lang === 'fr' ? 'J\'y étais !' : 'I was there!')
+                            : (lang === 'fr' ? 'J\'y étais ✓' : 'I was there ✓')}
+                          {(confirmCounts[topItem.id] || 0) > 0 && ` · ${confirmCounts[topItem.id]}`}
+                        </span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -506,6 +584,52 @@ export default function App() {
                         ))}
                       </div>
 
+                      {/* GPS warning */}
+                      {gpsWarning && (
+                        <div style={{ background: '#FFF8E1', borderRadius: 12, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>📍</span>
+                          <span style={{ fontSize: 13, color: '#F57F17', fontWeight: 600 }}>
+                            {lang === 'fr' ? 'Vous semblez loin de votre établissement. Êtes-vous bien sur place ?' : 'You seem far from your venue. Are you on-site?'}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Live stream URL */}
+                      <label style={labelStyle}>
+                        🔴 {lang === 'fr' ? 'Lien live (optionnel)' : 'Live link (optional)'}
+                      </label>
+                      <input
+                        value={liveUrl}
+                        onChange={e => setLiveUrl(e.target.value)}
+                        placeholder={lang === 'fr' ? 'YouTube, Instagram, TikTok, Facebook...' : 'YouTube, Instagram, TikTok, Facebook...'}
+                        style={{ ...inputStyle, fontSize: 13 }}
+                      />
+
+                      {/* Photo */}
+                      <label style={labelStyle}>
+                        📸 {lang === 'fr' ? 'Photo de la fournée (optionnel)' : 'Batch photo (optional)'}
+                      </label>
+                      {photoPreview
+                        ? (
+                          <div style={{ position: 'relative', marginBottom: 14 }}>
+                            <img src={photoPreview} alt="preview" style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 12, display: 'block' }} />
+                            <button onClick={() => { setPhotoFile(null); setPhotoPreview(''); }} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%', width: 28, height: 28, color: 'white', fontSize: 14, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                          </div>
+                        ) : (
+                          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: '100%', padding: '14px', borderRadius: 12, border: '2px dashed #EEEEEE', background: 'white', cursor: 'pointer', fontSize: 13, color: C.muted, fontFamily: 'inherit', fontWeight: 600, boxSizing: 'border-box', marginBottom: 14 }}>
+                            📷 {lang === 'fr' ? 'Prendre / choisir une photo' : 'Take / choose a photo'}
+                            <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              setPhotoFile(f);
+                              const reader = new FileReader();
+                              reader.onload = ev => setPhotoPreview(ev.target.result);
+                              reader.readAsDataURL(f);
+                            }} />
+                          </label>
+                        )
+                      }
+
                       {justDone
                         ? <div style={{ background: '#E8F5E9', borderRadius: 12, padding: 14, textAlign: 'center', color: '#1A8917', fontWeight: 700, fontSize: 14 }}>{t.liveSuccess}</div>
                         : !canAnnounce
@@ -612,4 +736,14 @@ function btnStyle(bg, ghost = false) {
     fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
     marginBottom: 8,
   };
+}
+
+function detectLivePlatform(url) {
+  if (!url) return null;
+  if (/youtube\.com|youtu\.be/.test(url))  return { name: 'YouTube' };
+  if (/instagram\.com/.test(url))          return { name: 'Instagram' };
+  if (/tiktok\.com/.test(url))             return { name: 'TikTok' };
+  if (/facebook\.com|fb\.watch/.test(url)) return { name: 'Facebook' };
+  if (/twitch\.tv/.test(url))              return { name: 'Twitch' };
+  return { name: 'Live' };
 }
