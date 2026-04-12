@@ -188,7 +188,7 @@ export default function App() {
     color: active ? C.black : 'rgba(255,255,255,0.5)',
   });
 
-  const stripeLink = process.env.REACT_APP_STRIPE_LINK || '#';
+  const stripeLink = process.env.REACT_APP_STRIPE_LINK || 'https://buy.stripe.com/aFa6oG0wc6iY5dwcVh8EM00';
 
   // ── Upgrade modal ─────────────────────────────────────────────────────────
   const UpgradeModal = () => (

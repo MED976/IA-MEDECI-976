@@ -248,7 +248,7 @@ export default function LandingPage({ onExplore, onRegister, lang, setLang }) {
                 ))}
               </div>
               <button
-                onClick={() => plan.ctaAction === 'stripe' ? window.open(process.env.REACT_APP_STRIPE_LINK || 'https://buy.stripe.com/hotnow-pro', '_blank') : onRegister()}
+                onClick={() => plan.ctaAction === 'stripe' ? window.open(process.env.REACT_APP_STRIPE_LINK || 'https://buy.stripe.com/aFa6oG0wc6iY5dwcVh8EM00', '_blank') : onRegister()}
                 style={{
                   display: 'block', width: '100%', padding: '14px', borderRadius: 12, fontFamily: 'inherit',
                   cursor: 'pointer', fontSize: 15, fontWeight: 700, border: 'none',
