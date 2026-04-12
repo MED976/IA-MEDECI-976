@@ -128,6 +128,10 @@ export default function App() {
   const [confirmCounts, setConfirmCounts]  = useState({});
   const [myConfirmations, setMyConfirmations] = useState(() => JSON.parse(localStorage.getItem('hn_confirmed') || '[]'));
   const [gpsWarning, setGpsWarning]        = useState(false);
+  const [searchQuery, setSearchQuery]      = useState('');
+  const [freshnessFilter, setFreshnessFilter] = useState('all');
+  const [selectedVenueId, setSelectedVenueId] = useState(null);
+  const [shareCopied, setShareCopied]      = useState(false);
 
   const t = T[lang].app;
 
@@ -141,6 +145,13 @@ export default function App() {
   useEffect(() => { localStorage.setItem('hn_favs', JSON.stringify(favorites)); }, [favorites]);
   useEffect(() => { localStorage.setItem('hn_mine', JSON.stringify(myVenue)); }, [myVenue]);
   useEffect(() => { setProduct(PRODUCTS_BY_TYPE[venueType]?.[0] || ''); setCustomProduct(''); }, [venueType]);
+
+  // ── Deep link ?v=venueId ─────────────────────────────────────────────────
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const vId = params.get('v');
+    if (vId) { setSelectedVenueId(vId); goToApp('explore'); window.history.replaceState({}, '', '/'); }
+  }, []); // eslint-disable-line
 
   // ── Stripe return: activate Pro ───────────────────────────────────────────
   useEffect(() => {
@@ -292,6 +303,19 @@ export default function App() {
     .filter(v => v.hotItems.length > 0)
     .filter(v => tab === 'favorites' ? favorites.includes(v.id) : true)
     .filter(v => filterType === 'all' || v.type === filterType)
+    .filter(v => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase();
+      return v.name.toLowerCase().includes(q) || v.hotItems.some(it => it.product.toLowerCase().includes(q));
+    })
+    .filter(v => {
+      if (freshnessFilter === 'all') return true;
+      const mins = (Date.now() - new Date(v.hotItems[0].at)) / 60000;
+      if (freshnessFilter === 'hot')   return mins < 15;
+      if (freshnessFilter === 'vfresh') return mins < 30;
+      if (freshnessFilter === 'fresh')  return mins < 60;
+      return true;
+    })
     // Pro venues float up at equal distance (±200m)
     .sort((a, b) => {
       const da = a.distance ?? 9999, db = b.distance ?? 9999;
@@ -316,6 +340,15 @@ export default function App() {
   });
 
   const stripeLink = process.env.REACT_APP_STRIPE_LINK || 'https://buy.stripe.com/aFa6oG0wc6iY5dwcVh8EM00';
+
+  const shareVenue = () => {
+    const url = `${window.location.origin}/?v=${myVenue.id}`;
+    if (navigator.share) {
+      navigator.share({ title: myVenue.name, text: lang === 'fr' ? 'Retrouvez mes produits frais en direct !' : 'See my fresh products live!', url });
+    } else {
+      navigator.clipboard?.writeText(url).then(() => { setShareCopied(true); setTimeout(() => setShareCopied(false), 2500); });
+    }
+  };
 
   // ── Upgrade modal ─────────────────────────────────────────────────────────
   const UpgradeModal = () => (
@@ -343,6 +376,95 @@ export default function App() {
     </div>
   );
 
+  // ── Venue detail modal ────────────────────────────────────────────────────
+  const selectedVenue = selectedVenueId ? enriched.find(v => v.id === selectedVenueId) || venues.find(v => v.id === selectedVenueId) : null;
+  const VenueDetailModal = () => {
+    if (!selectedVenue) return null;
+    const sv = { ...selectedVenue, hotItems: selectedVenue.hotItems || items.filter(i => i.venue_id === selectedVenue.id), bt: selectedVenue.bt || t.businessTypes.find(b => b.id === selectedVenue.type) };
+    const imgUrl = typeImageUrl(sv.type);
+    const topIt  = sv.hotItems[0];
+    if (!topIt) return null;
+    return (
+      <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}
+        onClick={() => setSelectedVenueId(null)}>
+        <div className="modal-enter" style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', paddingBottom: 32 }}
+          onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div style={{ height: 200, position: 'relative', overflow: 'hidden', borderRadius: '24px 24px 0 0',
+            background: topIt.photo_url ? `url(${topIt.photo_url}) center/cover` : imgUrl ? `linear-gradient(to bottom,rgba(0,0,0,0.08),rgba(0,0,0,0.5)),url(${imgUrl}) center/cover` : gradientByType(sv.type),
+            display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {!topIt.photo_url && <span style={{ fontSize: 72, filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))' }}>{sv.icon}</span>}
+            <button onClick={() => setSelectedVenueId(null)} style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(0,0,0,0.55)', border: 'none', borderRadius: '50%', width: 36, height: 36, color: 'white', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+            <div style={{ position: 'absolute', top: 16, left: 16, background: 'rgba(0,0,0,0.6)', borderRadius: 100, padding: '4px 12px' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>{freshnessInfo(topIt.at, t.freshnessLabels).label}</span>
+            </div>
+            {sv.distance !== null && sv.distance !== undefined && (
+              <div style={{ position: 'absolute', bottom: 14, right: 14, background: 'rgba(0,0,0,0.6)', borderRadius: 100, padding: '4px 10px' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'white' }}>
+                  {sv.distance < 1 ? `${Math.round(sv.distance * 1000)}m` : `${sv.distance.toFixed(1)}km`}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Content */}
+          <div style={{ padding: '20px 20px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ fontSize: 22, fontWeight: 900, margin: '0 0 3px', letterSpacing: '-0.3px' }}>{sv.name}</h2>
+                <span style={{ fontSize: 13, color: C.muted }}>{sv.bt?.icon} {sv.bt?.label}</span>
+              </div>
+              {sv.plan === 'pro' && <span style={{ fontSize: 11, fontWeight: 800, color: '#FF5000', background: '#FFF0EB', padding: '4px 10px', borderRadius: 8, flexShrink: 0 }}>⭐ PRO</span>}
+            </div>
+            {/* Items */}
+            {sv.hotItems.map(it => {
+              const f = freshnessInfo(it.at, t.freshnessLabels);
+              const q = t.quantities.find(q => q.id === it.quantity);
+              const mins = Math.floor((Date.now() - new Date(it.at)) / 60000);
+              const confs = confirmCounts[it.id] || 0;
+              const lp = it.live_url ? detectLivePlatform(it.live_url) : null;
+              return (
+                <div key={it.id} style={{ background: C.bg, borderRadius: 16, padding: '14px 16px', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700 }}>{it.product}</span>
+                      {q && <span style={{ fontSize: 14 }}>{q.emoji}</span>}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: f.color }}>{f.label}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 12, color: C.muted }}>{t.timeAgo(mins)}</span>
+                    {confs > 0 && <span style={{ fontSize: 12, color: C.muted }}>👍 {confs}</span>}
+                  </div>
+                  <div style={{ height: 3, background: C.border, borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${f.bar}%`, background: f.color, borderRadius: 10 }} />
+                  </div>
+                  {lp && (
+                    <a href={it.live_url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, background: '#E53935', borderRadius: 100, padding: '4px 12px', textDecoration: 'none' }}>
+                      <span className="live-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: 'white', display: 'inline-block' }} />
+                      <span style={{ fontSize: 11, fontWeight: 800, color: 'white' }}>🔴 LIVE · {lp.name}</span>
+                    </a>
+                  )}
+                  {it.photo_url && <img src={it.photo_url} alt={it.product} style={{ width: '100%', height: 130, objectFit: 'cover', borderRadius: 10, marginTop: 8, display: 'block' }} />}
+                </div>
+              );
+            })}
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+              <button onClick={() => confirmItem(topIt.id)} disabled={myConfirmations.includes(topIt.id)}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, cursor: myConfirmations.includes(topIt.id) ? 'default' : 'pointer', background: myConfirmations.includes(topIt.id) ? '#E8F5E9' : C.bg, color: myConfirmations.includes(topIt.id) ? '#1A8917' : C.muted }}>
+                {myConfirmations.includes(topIt.id) ? `✅ ${lang === 'fr' ? "J'y étais !" : 'I was there!'}` : `👍 ${lang === 'fr' ? "J'y étais ✓" : 'I was there ✓'}`}
+              </button>
+              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(sv.name)}`} target="_blank" rel="noopener noreferrer"
+                style={{ flex: 1, padding: '13px', borderRadius: 12, background: C.black, color: 'white', fontFamily: 'inherit', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
+                📍 {lang === 'fr' ? 'Y aller' : 'Get there'}
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ── Layout ────────────────────────────────────────────────────────────────
   if (view === 'landing') {
     return <LandingPage onExplore={() => goToApp('explore')} onRegister={() => goToApp('venue')} lang={lang} setLang={setLang} />;
@@ -351,6 +473,7 @@ export default function App() {
   return (
     <div style={{ fontFamily: "'Inter', system-ui, sans-serif", maxWidth: 480, margin: '0 auto', minHeight: '100vh', background: C.bg, display: 'flex', flexDirection: 'column' }}>
       {showUpgrade && <UpgradeModal />}
+      {selectedVenueId && <VenueDetailModal />}
 
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
 
@@ -382,17 +505,25 @@ export default function App() {
                 </div>
               </div>
 
-              {tab === 'explore' && (
-                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 16 }}>🔍</span>
-                  <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 15 }}>{t.searchPlaceholder}</span>
+              {(tab === 'explore' || tab === 'favorites') && (
+                <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 16, flexShrink: 0 }}>🔍</span>
+                  <input
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={t.searchPlaceholder}
+                    style={{ background: 'transparent', border: 'none', outline: 'none', color: 'white', fontSize: 15, width: '100%', fontFamily: 'inherit' }}
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: 18, cursor: 'pointer', padding: 0, lineHeight: 1 }}>×</button>
+                  )}
                 </div>
               )}
             </div>
 
             {/* Category chips */}
             {tab === 'explore' && activeTypes.length > 0 && (
-              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '14px 16px', scrollbarWidth: 'none' }}>
+              <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '14px 16px 0', scrollbarWidth: 'none' }}>
                 {[{ id: 'all', icon: '⚡', label: lang === 'fr' ? 'Tout' : 'All' }, ...t.businessTypes.filter(b => activeTypes.includes(b.id))].map(bt => (
                   <button key={bt.id} onClick={() => setFilterType(bt.id)} style={{
                     padding: '8px 16px', borderRadius: 100, fontSize: 13, fontWeight: 700,
@@ -403,6 +534,28 @@ export default function App() {
                     boxShadow: filterType === bt.id ? 'none' : '0 1px 4px rgba(0,0,0,0.08)',
                   }}>
                     {bt.icon} {bt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Freshness filter chips */}
+            {tab === 'explore' && (
+              <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 16px 14px', scrollbarWidth: 'none' }}>
+                {[
+                  { id: 'all',    icon: '⚡', label: lang === 'fr' ? 'Tous'       : 'All'        },
+                  { id: 'hot',    icon: '🔥', label: lang === 'fr' ? 'Tout chaud' : 'Just out'   },
+                  { id: 'vfresh', icon: '🧡', label: lang === 'fr' ? 'Très frais' : 'Very fresh' },
+                  { id: 'fresh',  icon: '🟢', label: lang === 'fr' ? 'Frais'      : 'Fresh'      },
+                ].map(f => (
+                  <button key={f.id} onClick={() => setFreshnessFilter(f.id)} style={{
+                    padding: '6px 14px', borderRadius: 100, fontSize: 12, fontWeight: 700,
+                    fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, border: 'none',
+                    background: freshnessFilter === f.id ? C.primary : C.card,
+                    color: freshnessFilter === f.id ? 'white' : C.muted,
+                    boxShadow: freshnessFilter === f.id ? '0 2px 10px rgba(255,80,0,0.3)' : '0 1px 4px rgba(0,0,0,0.07)',
+                  }}>
+                    {f.icon} {f.label}
                   </button>
                 ))}
               </div>
@@ -444,7 +597,7 @@ export default function App() {
                 const mins = Math.floor((Date.now() - new Date(topItem.at)) / 60000);
                 const imgUrl = typeImageUrl(v.type);
                 return (
-                  <div key={v.id} className="card-enter" style={{ background: C.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', animationDelay: `${idx * 60}ms` }}>
+                  <div key={v.id} className="card-enter" onClick={() => setSelectedVenueId(v.id)} style={{ background: C.card, borderRadius: 20, marginBottom: 16, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.10)', animationDelay: `${idx * 60}ms`, cursor: 'pointer' }}>
                     <div style={{
                       height: 160, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
                       background: topItem.photo_url
@@ -474,7 +627,7 @@ export default function App() {
                           </a>
                         );
                       })()}
-                      <button onClick={() => toggleFav(v.id)} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <button onClick={e => { e.stopPropagation(); toggleFav(v.id); }} style={{ position: 'absolute', top: 10, right: 12, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 36, height: 36, fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         {isFaved ? '❤️' : '🤍'}
                       </button>
                       {v.distance !== null && (
@@ -526,7 +679,7 @@ export default function App() {
                         })}
                       </div>
                       {/* Confirm button */}
-                      <button onClick={() => confirmItem(topItem.id)} style={{
+                      <button onClick={e => { e.stopPropagation(); confirmItem(topItem.id); }} style={{
                         background: myConfirmations.includes(topItem.id) ? '#E8F5E9' : C.bg,
                         border: 'none', borderRadius: 100, padding: '7px 14px',
                         display: 'flex', alignItems: 'center', gap: 6,
@@ -769,6 +922,11 @@ export default function App() {
                           })
                       }
                     </div>
+
+                    {/* ── Share link ── */}
+                    <button onClick={shareVenue} style={{ display: 'block', width: '100%', padding: '14px 20px', borderRadius: 14, border: 'none', background: shareCopied ? '#E8F5E9' : 'linear-gradient(135deg,#0A0A0A,#2C2C2C)', color: shareCopied ? '#1A8917' : 'white', fontSize: 15, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', marginBottom: 8 }}>
+                      {shareCopied ? `✅ ${lang === 'fr' ? 'Lien copié !' : 'Link copied!'}` : `🔗 ${lang === 'fr' ? 'Partager mon lien live' : 'Share my live link'}`}
+                    </button>
 
                     <button onClick={() => { setMyVenue(null); localStorage.removeItem('hn_mine'); setVenueScreen('register'); }}
                       style={btnStyle('transparent', true)}>{t.switchVenue}</button>
