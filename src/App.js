@@ -4,6 +4,12 @@ import LandingPage from './LandingPage';
 import T from './translations';
 import './animations.css';
 
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { supabase } from './supabaseClient';
+import LandingPage from './LandingPage';
+import T from './translations';
+import './animations.css';
+
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
